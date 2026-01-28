@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+google-generativeai
+python-multipart
+sqlalchemy
+pydantic
+python-dotenv
+requests
+openai-whisper
