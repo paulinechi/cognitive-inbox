@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, FlatList, StyleSheet } from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { captureThought } from '../services/api';
 
 import { Toast } from '../components/Toast';
@@ -16,14 +17,18 @@ export default function CaptureScreen() {
     const [logs, setLogs] = useState([]);
     const [toastMessage, setToastMessage] = useState('');
     const [selectedFilter, setSelectedFilter] = useState("All");
-
     const [selectedMemo, setSelectedMemo] = useState(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
+
+
+    // Lock to prevent double-submission
+    const isProcessing = useRef(false);
 
     const showToast = (message) => setToastMessage(message);
 
     const handleSend = async () => {
-        if (!text.trim()) return;
+        if (!text.trim()/* || isProcessing.current*/) return;
+        // isProcessing.current = true;
         setLoading(true);
         const inputText = text;
 
@@ -36,10 +41,13 @@ export default function CaptureScreen() {
             showToast('Error saving.');
         } finally {
             setLoading(false);
+            // isProcessing.current = false;
         }
     };
 
     const handleMediaCapture = async (uri, type) => {
+        // if (isProcessing.current) return;
+        // isProcessing.current = true;
         setLoading(true);
         try {
             const result = await captureThought({ type, uri });
@@ -49,6 +57,7 @@ export default function CaptureScreen() {
             showToast(`Error uploading ${type}.`);
         } finally {
             setLoading(false);
+            // isProcessing.current = false;
         }
     };
 
@@ -96,6 +105,7 @@ export default function CaptureScreen() {
                             fontWeight: '400',
                             lineHeight: 24,
                             flex: 1,
+                            paddingBottom: 40,
                         }}
                         placeholder="Write, speak, or drop anything here..."
                         placeholderTextColor="#D1D5DB"
@@ -103,7 +113,6 @@ export default function CaptureScreen() {
                         textAlignVertical="top"
                         value={text}
                         onChangeText={setText}
-                        onSubmitEditing={handleSend}
                         returnKeyType="done"
                         blurOnSubmit={true}
                     />
@@ -119,7 +128,28 @@ export default function CaptureScreen() {
                             isProcessing={loading}
                         />
 
-                        {loading && <ActivityIndicator size="small" color="#9CA3AF" />}
+                        <TouchableOpacity
+                            style={[
+                                styles.saveButton,
+                                (!text.trim() || loading) && { backgroundColor: '#E5E7EB' }
+                            ]}
+                            onPress={handleSend}
+                            activeOpacity={0.7}
+                            disabled={!text.trim() || loading}
+                        >
+                            <Ionicons
+                                name="send"
+                                size={18}
+                                color={!text.trim() || loading ? "#9CA3AF" : "white"}
+                            />
+                            <Text style={[
+                                styles.saveButtonText,
+                                (!text.trim() || loading) && { color: '#9CA3AF' }
+                            ]}>Save</Text>
+                        </TouchableOpacity>
+
+                        {loading && <ActivityIndicator size="small" color="#6366F1" style={{ marginLeft: 12 }} />}
+
                     </View>
                 </View>
 
@@ -195,10 +225,30 @@ const styles = StyleSheet.create({
     },
     iconContainer: {
         position: 'absolute',
-        bottom: 20,
-        right: 24,
+        bottom: 16,
+        right: 20,
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    saveButton: {
+        backgroundColor: '#6366F1',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginLeft: 12,
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    saveButtonText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 14,
+        marginLeft: 6,
     },
     contentArea: {
         flex: 1,

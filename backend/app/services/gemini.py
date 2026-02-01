@@ -1,14 +1,19 @@
+import logging
 import google.generativeai as genai
 import os
 import json
 import typing_extensions as typing
 from app.models import MemoProcessed, MemoType, MemoInput
 
+logger = logging.getLogger(__name__)
+
 def configure_genai():
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        print("Warning: GOOGLE_API_KEY not found in environment variables")
+        logger.warning("Warning: GOOGLE_API_KEY not found in environment variables")
         return False
+    
+    logger.info(f"AI - Configuring Gemini API (Key length: {len(api_key)})")
     genai.configure(api_key=api_key)
     return True
 
@@ -28,9 +33,20 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
         file_data: Raw bytes of the file (audio or image)
         mime_type: MIME type of the file (e.g., 'audio/mp3', 'image/jpeg')
     """
-    configure_genai()
+    if not configure_genai():
+        logger.error("AI - Failed to configure Gemini")
+        return MemoProcessed(
+            original_input=text_input or "",
+            extracted_text=text_input or "",
+            memo_type=MemoType.OTHER,
+            summary="API configuration failed.",
+            confidence_score=0.0
+        )
     
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    # Prefer lite for free tier stability
+    model_name = 'gemini-2.0-flash'
+    logger.info(f"AI - Using model: {model_name}")
+    model = genai.GenerativeModel(model_name)
     
     prompt_parts = [
         "You are a helpful cognitive assistant. Analyze the following user input.",
@@ -81,7 +97,7 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
         )
         
     except Exception as e:
-        print(f"Error calling Gemini: {e}")
+        logger.error(f"AI - Error calling Gemini: {e}")
         return MemoProcessed(
             original_input=text_input or "",
             extracted_text=text_input or "",

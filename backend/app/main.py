@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import logging
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -11,7 +12,20 @@ from .database import engine, Base, get_db
 from .services.gemini import analyze_content
 from .services.whisper import transcribe_audio
 
-load_dotenv()
+# Load environment variables from backend/.env
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+
+# Configure logging to console and file (using UTF-8 for Windows compatibility)
+log_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'app.log')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file, encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)
 
@@ -40,7 +54,11 @@ async def capture_thought(
     Capture a thought (Text, Audio, or Image) and process it via Gemini.
     Saves the result to the SQLite database.
     """
+    logger.info("START - note submission")
+    logger.info(f"Input type: {'text' if text else 'file'}")
+    
     if not text and not file:
+         logger.error("ERROR - Submission failed: No input provided")
          raise HTTPException(status_code=400, detail="Input (text or file) is empty")
 
     file_bytes = None
@@ -50,22 +68,25 @@ async def capture_thought(
     if file:
         file_bytes = await file.read()
         mime_type = file.content_type
+        logger.info(f"FILE - uploaded: {file.filename}, MIME type: {mime_type}, Size: {len(file_bytes)} bytes")
         
         if mime_type and "audio" in mime_type:
-            print(f"Transcribing audio with Whisper...")
+            logger.info("AUDIO - Transcribing with Whisper...")
             transcribed_text = transcribe_audio(file_bytes, mime_type)
-            print(f"Transcription: {transcribed_text}")
+            logger.info(f"OK - Transcription complete: {transcribed_text[:100]}..." if len(transcribed_text) > 100 else f"OK - Transcription complete: {transcribed_text}")
             
             if transcribed_text:
                 text = transcribed_text
                 file_bytes = None
                 mime_type = None
 
+    logger.info("AI - Sending content to Gemini for analysis...")
     processed_data = analyze_content(
         text_input=text, 
         file_data=file_bytes, 
         mime_type=mime_type
     )
+    logger.info(f"OK - Gemini analysis complete - Type: {processed_data.memo_type}, Confidence: {processed_data.confidence_score}")
     
     new_id = str(uuid.uuid4())
     
@@ -81,9 +102,11 @@ async def capture_thought(
         confidence_score=processed_data.confidence_score
     )
     
+    logger.info(f"DB - Saving memo to database with ID: {new_id}")
     db.add(db_memo)
     db.commit()
     db.refresh(db_memo)
+    logger.info(f"DONE - Memo saved successfully - ID: {db_memo.id}, Type: {db_memo.memo_type}")
     
     return Memo(
         id=db_memo.id,

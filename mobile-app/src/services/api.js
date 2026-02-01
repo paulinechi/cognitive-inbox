@@ -1,4 +1,20 @@
-const API_URL = 'http://172.16.27.156:8000';
+import Constants from 'expo-constants';
+
+const getApiUrl = () => {
+    // In development, the debugger host contains the developer's computer IP
+    const debuggerHost = Constants.expoConfig?.hostUri;
+
+    if (debuggerHost) {
+        const host = debuggerHost.split(':').shift();
+        return `http://${host}:8000`;
+    }
+
+    // Fallback to localhost if hostUri is not available
+    return 'http://localhost:8000';
+};
+
+const API_URL = getApiUrl();
+console.log('API URL:', API_URL);
 
 export const captureThought = async (input) => {
     try {
