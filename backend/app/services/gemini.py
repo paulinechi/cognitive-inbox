@@ -18,7 +18,7 @@ def configure_genai():
     return True
 
 class MemoAnalysis(typing.TypedDict):
-    memo_type: str
+    memo_type: MemoType
     summary: str
     action_items: list[str]
     tags: list[str]
@@ -50,7 +50,16 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
     
     prompt_parts = [
         "You are a helpful cognitive assistant. Analyze the following user input.",
-        "Categorize it into one of these types: Idea, Task, Wishlist, Reflection, Insight, Other.",
+        f"Categorize it into exactly one of the following types: {', '.join([t.value for t in MemoType])}.",
+        "Description of types:",
+        "- Brainstorming: team names, project ideas, creative inspirations.",
+        "- Task: to-do items, action items, work or personal chores.",
+        "- Wishlist: things to buy or do in the future without a pressing deadline.",
+        "- Collection: favorite restaurants, songs, recipes, scores, personal lists.",
+        "- Draft: draft emails, messages, or content to be sent.",
+        "- Note: basic info like phone numbers, IDs, addresses, or meeting takeaways.",
+        "- Reflection: mood, journal entries, personal thoughts, prayers.",
+        "- Other: anything that doesn't fit the above.",
         "Extract a concise summary, any action items, relevant tags, and the emotional tone.",
         "If the input is an image, describe it efficiently and extract meaningful text or intent.",
         "Return the response in JSON format.",

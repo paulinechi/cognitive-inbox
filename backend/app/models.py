@@ -7,11 +7,13 @@ from .database import Base
 import json
 
 class MemoType(str, Enum):
-    IDEA = "Idea"
+    BRAINSTORMING = "Brainstorming"
     TASK = "Task"
     WISHLIST = "Wishlist"
+    COLLECTION = "Collection"
+    DRAFT = "Draft"
+    NOTE = "Note"
     REFLECTION = "Reflection"
-    INSIGHT = "Insight"
     OTHER = "Other"
 
 class MemoModel(Base):
