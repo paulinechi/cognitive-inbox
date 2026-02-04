@@ -86,15 +86,13 @@ async def capture_thought(
         file_data=file_bytes, 
         mime_type=mime_type
     )
-    logger.info(f"OK - Gemini analysis complete - Type: {processed_data.memo_type}, Confidence: {processed_data.confidence_score}")
-    
     new_id = str(uuid.uuid4())
     
     db_memo = MemoModel(
         id=new_id,
         original_input=processed_data.original_input,
         extracted_text=processed_data.extracted_text,
-        memo_type=processed_data.memo_type,
+        memo_types=json.dumps([t.value for t in processed_data.memo_types]),
         summary=processed_data.summary,
         action_items=json.dumps(processed_data.action_items),
         tags=json.dumps(processed_data.tags),
@@ -106,13 +104,13 @@ async def capture_thought(
     db.add(db_memo)
     db.commit()
     db.refresh(db_memo)
-    logger.info(f"DONE - Memo saved successfully - ID: {db_memo.id}, Type: {db_memo.memo_type}")
+    logger.info(f"DONE - Memo saved successfully - ID: {db_memo.id}, Types: {db_memo.memo_types}")
     
     return Memo(
         id=db_memo.id,
         original_input=db_memo.original_input,
         extracted_text=db_memo.extracted_text,
-        memo_type=db_memo.memo_type,
+        memo_types=json.loads(db_memo.memo_types),
         summary=db_memo.summary,
         action_items=json.loads(db_memo.action_items),
         tags=json.loads(db_memo.tags),
@@ -134,7 +132,7 @@ def get_memos(db: Session = Depends(get_db)):
             id=memo.id,
             original_input=memo.original_input,
             extracted_text=memo.extracted_text,
-            memo_type=memo.memo_type,
+            memo_types=json.loads(memo.memo_types),
             summary=memo.summary,
             action_items=json.loads(memo.action_items),
             tags=json.loads(memo.tags),

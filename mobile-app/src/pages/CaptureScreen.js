@@ -64,7 +64,7 @@ export default function CaptureScreen() {
     const addLog = (result, originalInput, mediaUri = null, mediaType = null) => {
         const newLog = {
             id: result.id || Date.now().toString(),
-            type: result.memo_type || "Memo",
+            types: result.memo_types || ["Other"],
             summary: result.summary || originalInput,
             originalInput: originalInput,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -75,12 +75,13 @@ export default function CaptureScreen() {
             mediaType: mediaType,
         };
         setLogs(prev => [newLog, ...prev]);
-        showToast(`Saved as ${newLog.type}`);
+        const primaryType = newLog.types[0];
+        showToast(`Saved as ${primaryType}`);
     };
 
     const filteredLogs = useMemo(() => {
         if (selectedFilter === "All") return logs;
-        return logs.filter(log => log.type === selectedFilter);
+        return logs.filter(log => log.types.includes(selectedFilter));
     }, [logs, selectedFilter]);
 
     return (
@@ -113,8 +114,8 @@ export default function CaptureScreen() {
                         textAlignVertical="top"
                         value={text}
                         onChangeText={setText}
-                        returnKeyType="done"
-                        blurOnSubmit={true}
+                        returnKeyType="default"
+                        blurOnSubmit={false}
                     />
 
                     <View style={styles.iconContainer}>

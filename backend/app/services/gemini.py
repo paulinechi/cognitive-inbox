@@ -18,7 +18,7 @@ def configure_genai():
     return True
 
 class MemoAnalysis(typing.TypedDict):
-    memo_type: MemoType
+    memo_types: list[str]
     summary: str
     action_items: list[str]
     tags: list[str]
@@ -50,7 +50,8 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
     
     prompt_parts = [
         "You are a helpful cognitive assistant. Analyze the following user input.",
-        f"Categorize it into exactly one of the following types: {', '.join([t.value for t in MemoType])}.",
+        f"Categorize it into one OR MORE of the following types: {', '.join([t.value for t in MemoType])}.",
+        "If multiple categories apply, include all of them in the order of relevance.",
         "Description of types:",
         "- Brainstorming: team names, project ideas, creative inspirations.",
         "- Task: to-do items, action items, work or personal chores.",
@@ -89,15 +90,24 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
         
         result = json.loads(response.text)
         
-        try:
-            m_type = MemoType(result.get("memo_type", "Other"))
-        except ValueError:
-            m_type = MemoType.OTHER
+        raw_types = result.get("memo_types", [])
+        if not isinstance(raw_types, list):
+            raw_types = [raw_types]
+            
+        final_types = []
+        for t in raw_types:
+            try:
+                final_types.append(MemoType(t))
+            except ValueError:
+                continue
+        
+        if not final_types:
+            final_types = [MemoType.OTHER]
             
         return MemoProcessed(
             original_input=text_input or f"[{mime_type}]",
             extracted_text=text_input or f"[{mime_type} Processed]", 
-            memo_type=m_type,
+            memo_types=final_types,
             summary=result.get("summary", ""),
             action_items=result.get("action_items", []),
             tags=result.get("tags", []),
@@ -110,7 +120,7 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
         return MemoProcessed(
             original_input=text_input or "",
             extracted_text=text_input or "",
-            memo_type=MemoType.OTHER,
+            memo_types=[MemoType.OTHER],
             summary=text_input if text_input else "Could not process content",
             confidence_score=0.0
         )

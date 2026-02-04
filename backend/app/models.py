@@ -22,7 +22,7 @@ class MemoModel(Base):
     id = Column(String, primary_key=True, index=True)
     original_input = Column(Text, nullable=True)
     extracted_text = Column(Text, nullable=True)
-    memo_type = Column(String, default="Other")
+    memo_types = Column(Text, default="[\"Other\"]")
     summary = Column(Text, nullable=True)
     action_items = Column(Text, default="[]")
     tags = Column(Text, default="[]")
@@ -38,7 +38,7 @@ class MemoInput(BaseModel):
 class MemoProcessed(BaseModel):
     original_input: str
     extracted_text: str
-    memo_type: MemoType
+    memo_types: List[MemoType]
     summary: str
     action_items: List[str] = []
     tags: List[str] = []

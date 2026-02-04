@@ -113,6 +113,44 @@ cd ..
   .\start.ps1 i -Clear
   ```
 
+## Database Inspection
+
+The application uses SQLite, with the database file located at `backend/cognitive_inbox.db`.
+
+### How to View the Data
+
+- **VS Code Extension**: Install **"SQLite Viewer"** and click on `backend/cognitive_inbox.db`.
+- **CLI**: Use `sqlite3 backend/cognitive_inbox.db` from your terminal.
+
+### Commonly Used Queries
+
+Here are some helpful SQL queries for the `memos` table:
+
+- **View all memos (newest first):**
+  ```sql
+  SELECT id, memo_type, summary, created_at FROM memos ORDER BY created_at DESC;
+  ```
+
+- **Filter by memo type:**
+  ```sql
+  SELECT id, summary FROM memos WHERE memo_type = 'Task';
+  ```
+
+- **Search for keywords in original input:**
+  ```sql
+  SELECT * FROM memos WHERE original_input LIKE '%shopping%';
+  ```
+
+- **Count memos by type:**
+  ```sql
+  SELECT memo_type, COUNT(*) as count FROM memos GROUP BY memo_type;
+  ```
+
+- **View high-confidence memos (>0.8):**
+  ```sql
+  SELECT summary, confidence_score FROM memos WHERE confidence_score > 0.8;
+  ```
+
 ### Manual Start
 
 If you prefer to run services individually:

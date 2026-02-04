@@ -99,10 +99,14 @@ export const MemoDetailModal = ({ isVisible, onClose, memo }) => {
 
                     <ScrollView showsVerticalScrollIndicator={false}>
                         <View style={styles.header}>
-                            <View style={styles.typeBadge}>
-                                <Text style={styles.typeBadgeText}>
-                                    {memo.type}
-                                </Text>
+                            <View style={styles.typesList}>
+                                {memo.types && memo.types.map((type, index) => (
+                                    <View key={index} style={styles.typeBadge}>
+                                        <Text style={styles.typeBadgeText}>
+                                            {type}
+                                        </Text>
+                                    </View>
+                                ))}
                             </View>
                             <Text style={styles.timestamp}>
                                 {memo.timestamp}
@@ -239,6 +243,13 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         marginBottom: 24,
+    },
+    typesList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        flex: 1,
+        marginRight: 12,
     },
     typeBadge: {
         backgroundColor: '#000000',
