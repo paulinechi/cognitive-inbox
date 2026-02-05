@@ -34,6 +34,7 @@ def read_root():
 async def capture_thought(
     text: str = Form(None), 
     file: UploadFile = File(None),
+    available_tags: str = Form("[]"), # JSON string of tags
     db: Session = Depends(get_db)
 ):
     """
@@ -61,10 +62,16 @@ async def capture_thought(
                 file_bytes = None
                 mime_type = None
 
+    try:
+        parsed_tags = json.loads(available_tags)
+    except:
+        parsed_tags = []
+
     processed_data = analyze_content(
         text_input=text, 
         file_data=file_bytes, 
-        mime_type=mime_type
+        mime_type=mime_type,
+        available_tags=parsed_tags
     )
     
     new_id = str(uuid.uuid4())

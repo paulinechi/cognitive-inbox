@@ -36,7 +36,7 @@ class MemoInput(BaseModel):
 class MemoProcessed(BaseModel):
     original_input: str
     extracted_text: str
-    memo_type: MemoType
+    memo_type: str # Changed from MemoType to str to allow custom collections
     summary: str
     action_items: List[str] = []
     tags: List[str] = []

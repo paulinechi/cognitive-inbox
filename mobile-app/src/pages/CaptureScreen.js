@@ -1,7 +1,19 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, FlatList, StyleSheet } from 'react-native';
+import {
+    View,
+    Text,
+    TextInput,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    FlatList,
+    StyleSheet,
+    TouchableOpacity
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { captureThought } from '../services/api';
+import { useTheme } from '../context/ThemeContext';
+import { useLogs } from '../context/LogContext';
 
 import { Toast } from '../components/Toast';
 import { LogItem } from '../components/LogItem';
@@ -9,11 +21,17 @@ import { FilterDropdown } from '../components/FilterDropdown';
 import { VoiceRecorder } from '../components/VoiceRecorder';
 import { CameraCapture } from '../components/CameraCapture';
 import { MemoDetailModal } from '../components/MemoDetailModal';
+import CollectionScreen from './CollectionScreen';
+import SettingScreen from './SettingScreen';
+import { NavigationTab } from '../components/NavigationTab';
 
 export default function CaptureScreen() {
+    const { colors: themeColors, isDark } = useTheme();
+    const { logs, addLog, deleteLog, collections } = useLogs();
+
+    const [activeTab, setActiveTab] = useState('Home');
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
-    const [logs, setLogs] = useState([]);
     const [toastMessage, setToastMessage] = useState('');
     const [selectedFilter, setSelectedFilter] = useState("All");
 
@@ -22,15 +40,22 @@ export default function CaptureScreen() {
 
     const showToast = (message) => setToastMessage(message);
 
+    // Filter only custom collections to send to AI
+    const customTags = useMemo(() => {
+        return collections.filter(c => c.isCustom).map(c => c.title);
+    }, [collections]);
+
     const handleSend = async () => {
         if (!text.trim()) return;
         setLoading(true);
         const inputText = text;
 
         try {
-            const result = await captureThought(inputText);
+            // Pass custom tags to AI
+            const result = await captureThought(inputText, customTags);
             setText('');
-            addLog(result, inputText);
+            const newLog = addLog(result, inputText);
+            showToast(`Saved as ${newLog.type}`);
         } catch (error) {
             console.error(error);
             showToast('Error saving.');
@@ -42,8 +67,10 @@ export default function CaptureScreen() {
     const handleMediaCapture = async (uri, type) => {
         setLoading(true);
         try {
-            const result = await captureThought({ type, uri });
-            addLog(result, type === 'audio' ? "Audio Note" : "Photo Note", uri, type);
+            // Pass custom tags to AI
+            const result = await captureThought({ type, uri }, customTags);
+            const newLog = addLog(result, type === 'audio' ? "Audio Note" : "Photo Note", uri, type);
+            showToast(`Saved as ${newLog.type}`);
         } catch (error) {
             console.error(error);
             showToast(`Error uploading ${type}.`);
@@ -52,53 +79,48 @@ export default function CaptureScreen() {
         }
     };
 
-    const addLog = (result, originalInput, mediaUri = null, mediaType = null) => {
-        const newLog = {
-            id: result.id || Date.now().toString(),
-            type: result.memo_type || "Memo",
-            summary: result.summary || originalInput,
-            originalInput: originalInput,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            action_items: result.action_items,
-            tags: result.tags,
-            emotional_tone: result.emotional_tone,
-            mediaUri: mediaUri,
-            mediaType: mediaType,
-        };
-        setLogs(prev => [newLog, ...prev]);
-        showToast(`Saved as ${newLog.type}`);
-    };
-
     const filteredLogs = useMemo(() => {
         if (selectedFilter === "All") return logs;
         return logs.filter(log => log.type === selectedFilter);
     }, [logs, selectedFilter]);
 
-    return (
-        <SafeAreaView style={styles.safeArea}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={styles.keyboardView}
-            >
-                <Toast message={toastMessage} onHide={() => setToastMessage('')} />
-
-                <MemoDetailModal
-                    isVisible={isModalVisible}
-                    onClose={() => setIsModalVisible(false)}
-                    memo={selectedMemo}
+    const renderContent = () => {
+        if (activeTab === 'Collection') {
+            return (
+                <CollectionScreen
+                    onSelectCategory={(category) => {
+                        setSelectedFilter(category);
+                        setActiveTab('Home');
+                    }}
                 />
+            );
+        }
 
-                <View style={styles.inputCard}>
+        if (activeTab === 'Settings') {
+            return (
+                <SettingScreen
+                    selectedFilter={selectedFilter}
+                    onSelectFilter={(newFilter) => {
+                        setSelectedFilter(newFilter);
+                        // Optional: Navigate back to Home automatically not requested, 
+                        // just setting the state.
+                    }}
+                />
+            );
+        }
+
+        // Default: Home (Capture) Screen
+        return (
+            <>
+                <View style={[styles.inputCard, {
+                    backgroundColor: themeColors.card,
+                    borderColor: themeColors.border,
+                    shadowOpacity: isDark ? 0 : 0.05
+                }]}>
                     <TextInput
-                        style={{
-                            color: '#374151',
-                            fontSize: 16,
-                            fontWeight: '400',
-                            lineHeight: 24,
-                            flex: 1,
-                        }}
+                        style={[styles.textInput, { color: themeColors.text }]}
                         placeholder="Write, speak, or drop anything here..."
-                        placeholderTextColor="#D1D5DB"
+                        placeholderTextColor={themeColors.placeholder}
                         multiline={true}
                         textAlignVertical="top"
                         value={text}
@@ -113,35 +135,45 @@ export default function CaptureScreen() {
                             onRecordingComplete={(uri) => handleMediaCapture(uri, 'audio')}
                             isProcessing={loading}
                         />
-
                         <CameraCapture
                             onCapture={(uri) => handleMediaCapture(uri, 'image')}
                             isProcessing={loading}
                         />
-
-                        {loading && <ActivityIndicator size="small" color="#9CA3AF" />}
+                        {loading && <ActivityIndicator size="small" color={themeColors.textSecondary} />}
                     </View>
                 </View>
 
                 <View style={styles.contentArea}>
-                    {logs.length > 0 && (
-                        <FilterDropdown
-                            selectedFilter={selectedFilter}
-                            onSelectFilter={setSelectedFilter}
-                        />
+                    {/* Landing Page Header - Shows when coming from Collection tab */}
+                    {selectedFilter !== "All" ? (
+                        <View style={styles.landingHeader}>
+                            <View>
+                                <Text style={[styles.landingLabel, { color: themeColors.placeholder }]}>Collection</Text>
+                                <Text style={[styles.landingTitle, { color: themeColors.text }]}>{selectedFilter}</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={[styles.clearFilterBtn, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
+                                onPress={() => setSelectedFilter("All")}
+                            >
+                                <Text style={{ color: themeColors.textSecondary, fontWeight: '600', fontSize: 12 }}>Clear</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        logs.length > 0 && (
+                            <FilterDropdown
+                                selectedFilter={selectedFilter}
+                                onSelectFilter={setSelectedFilter}
+                            />
+                        )
                     )}
 
-                    {logs.length === 0 ? (
+                    {filteredLogs.length === 0 ? (
                         <View style={styles.emptyState}>
-                            <Text
-                                style={styles.emptyStateTitle}
-                            >
-                                Your thoughts will appear here
+                            <Text style={[styles.emptyStateTitle, { color: themeColors.textSecondary }]}>
+                                {selectedFilter === "All" ? "Your thoughts will appear here" : `No ${selectedFilter}s yet`}
                             </Text>
-                            <Text
-                                style={styles.emptyStateSubtitle}
-                            >
-                                Start typing above to capture your first thought
+                            <Text style={[styles.emptyStateSubtitle, { color: themeColors.placeholder }]}>
+                                {selectedFilter === "All" ? "Start typing above to capture your first thought" : "Try categorizing some notes to see them here"}
                             </Text>
                         </View>
                     ) : (
@@ -150,7 +182,7 @@ export default function CaptureScreen() {
                             renderItem={({ item }) => (
                                 <LogItem
                                     item={item}
-                                    onDelete={(id) => setLogs(prev => prev.filter(l => l.id !== id))}
+                                    onDelete={(id) => deleteLog(id)}
                                     onClick={(item) => {
                                         setSelectedMemo(item);
                                         setIsModalVisible(true);
@@ -163,7 +195,39 @@ export default function CaptureScreen() {
                         />
                     )}
                 </View>
+            </>
+        );
+    };
+
+    return (
+        <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.keyboardView}
+            >
+                <Toast message={toastMessage} onHide={() => setToastMessage('')} />
+
+                <MemoDetailModal
+                    isVisible={isModalVisible}
+                    onClose={() => setIsModalVisible(false)}
+                    memo={selectedMemo}
+                />
+
+                {renderContent()}
+
             </KeyboardAvoidingView>
+
+            <View style={[styles.navigationContainer, { backgroundColor: themeColors.background }]}>
+                <NavigationTab
+                    activeTab={activeTab}
+                    onTabPress={(tab) => {
+                        if (tab === 'Home' && activeTab === 'Home') {
+                            setSelectedFilter("All");
+                        }
+                        setActiveTab(tab);
+                    }}
+                />
+            </View>
         </SafeAreaView>
     );
 }
@@ -171,25 +235,27 @@ export default function CaptureScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#F9F9FB',
     },
     keyboardView: {
         flex: 1,
         paddingHorizontal: 24,
         paddingTop: 48,
     },
+    textInput: {
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        flex: 1,
+    },
     inputCard: {
         position: 'relative',
-        backgroundColor: '#FFFFFF',
         borderRadius: 32,
         padding: 24,
         height: 192,
         marginBottom: 24,
         borderWidth: 1,
-        borderColor: '#F3F4F6',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 2,
     },
@@ -210,18 +276,46 @@ const styles = StyleSheet.create({
         paddingBottom: 128,
     },
     emptyStateTitle: {
-        color: '#9CA3AF',
         fontSize: 20,
         fontWeight: '400',
         letterSpacing: -0.3,
         marginBottom: 8,
     },
     emptyStateSubtitle: {
-        color: '#D1D5DB',
         fontSize: 14,
         fontWeight: '400',
         textAlign: 'center',
         width: '66%',
         lineHeight: 20,
+    },
+    navigationContainer: {
+        zIndex: 100,
+        elevation: 20,
+    },
+    // New Landing Page Styles
+    landingHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        marginBottom: 20,
+        paddingHorizontal: 4,
+    },
+    landingLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 2,
+    },
+    landingTitle: {
+        fontSize: 28,
+        fontWeight: '700',
+        letterSpacing: -0.5,
+    },
+    clearFilterBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        marginBottom: 4,
     },
 });

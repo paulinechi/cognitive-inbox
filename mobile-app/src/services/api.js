@@ -1,8 +1,11 @@
-const API_URL = 'http://172.16.27.156:8000';
+const API_URL = 'http://172.16.27.76:8000';
 
-export const captureThought = async (input) => {
+export const captureThought = async (input, tags = []) => {
     try {
         const formData = new FormData();
+
+        // Send available tags for dynamic categorization
+        formData.append('available_tags', JSON.stringify(tags));
 
         if (typeof input === 'string') {
             formData.append('text', input);

@@ -19,7 +19,7 @@ class MemoAnalysis(typing.TypedDict):
     tags: list[str]
     emotional_tone: str
 
-def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: str = None) -> MemoProcessed:
+def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: str = None, available_tags: list[str] = []) -> MemoProcessed:
     """
     Analyzes multimodal input using Gemini and returns a structured MemoProcessed object.
     
@@ -27,16 +27,25 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
         text_input: Optional text string
         file_data: Raw bytes of the file (audio or image)
         mime_type: MIME type of the file (e.g., 'audio/mp3', 'image/jpeg')
+        available_tags: List of custom user tags/collections to consider
     """
     configure_genai()
     
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    model = genai.GenerativeModel('gemini-flash-latest')
     
+    # Construct the allowed tags string
+    base_tags = ["#Work", "#Personal", "#Urgent", "#Learning", "#Health", "#Finance", "#Home", "#Tech", "#Creative"]
+    # Add user custom tags if provided (formatted with # if missing)
+    custom_tags = [tag if tag.startswith("#") else f"#{tag}" for tag in available_tags]
+    all_tags = list(set(base_tags + custom_tags))
+    tags_str = ", ".join(all_tags)
+
     prompt_parts = [
         "You are a helpful cognitive assistant. Analyze the following user input.",
-        "Categorize it into one of these types: Idea, Task, Wishlist, Reflection, Insight, Other.",
-        "Extract a concise summary, any action items, relevant tags, and the emotional tone.",
+        f"Categorize it into exactly one of these types: Idea, Task, Wishlist, Reflection, Insight, Other, OR one of these custom user collections: {', '.join(available_tags)}.",
+        "Extract a concise, direct, and imperative summary (e.g., 'Buy eggs', 'Refactor code'). Avoid 'Reminder to...' or 'Note about...'.",
         "If the input is an image, describe it efficiently and extract meaningful text or intent.",
+        f"Assign strictly relevant tags from this allowed list only: {tags_str}. Do not invent new tags.",
         "Return the response in JSON format.",
     ]
     
@@ -64,10 +73,8 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
         
         result = json.loads(response.text)
         
-        try:
-            m_type = MemoType(result.get("memo_type", "Other"))
-        except ValueError:
-            m_type = MemoType.OTHER
+        # Use the raw string from AI, or default to Other
+        m_type = result.get("memo_type", "Other")
             
         return MemoProcessed(
             original_input=text_input or f"[{mime_type}]",
