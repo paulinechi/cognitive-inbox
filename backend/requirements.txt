@@ -4,6 +4,8 @@ google-generativeai
 python-multipart
 sqlalchemy
 pydantic
+pydantic-settings
 python-dotenv
 requests
 openai-whisper
+PyYAML

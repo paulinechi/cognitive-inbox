@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLogs } from '../context/LogContext';
 import { captureThought } from '../services/api';
@@ -23,6 +24,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
     const { addLog, collections } = useLogs();
     const [loading, setLoading] = useState(false);
     const [showTagPicker, setShowTagPicker] = useState(false);
+    const insets = useSafeAreaInsets();
 
     // Use collections from context + 'All'
     const tags = ['All', ...collections.map(c => c.type)];
@@ -51,7 +53,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
     };
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <ScrollView style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top + 32 }]}>
             <View style={styles.headerRow}>
                 <Text style={[styles.headerTitle, { color: themeColors.text }]}>Settings</Text>
                 {loading && <ActivityIndicator size="small" color={themeColors.text} />}
@@ -140,7 +142,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, paddingHorizontal: 24, paddingTop: 32 },
+    container: { flex: 1, paddingHorizontal: 24 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 },
     headerTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
     sectionTitle: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginLeft: 4 },

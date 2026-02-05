@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const FILTER_TYPES = ["All", "Idea", "Task", "Journal", "Other"];
+import { useTheme } from '../context/ThemeContext';
 
-export const FilterDropdown = ({ selectedFilter, onSelectFilter }) => {
+export const FilterDropdown = ({ selectedFilter, onSelectFilter, collections = [] }) => {
+    const { colors: themeColors, isDark } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
+
+    // Build filter types from collections
+    const FILTER_TYPES = ["All", ...collections.map(c => c.title)];
 
     const handleSelect = (type) => {
         onSelectFilter(type);
@@ -14,7 +18,7 @@ export const FilterDropdown = ({ selectedFilter, onSelectFilter }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.headerText}>
+            <Text style={[styles.headerText, { color: themeColors.text }]}>
                 {selectedFilter === "All" ? "Recent Thoughts" : `${selectedFilter}s`}
             </Text>
 
@@ -23,17 +27,25 @@ export const FilterDropdown = ({ selectedFilter, onSelectFilter }) => {
                     onPress={() => setIsOpen(!isOpen)}
                     style={[
                         styles.filterButton,
-                        selectedFilter !== 'All' && styles.filterButtonActive
+                        {
+                            backgroundColor: themeColors.card,
+                            borderColor: themeColors.border
+                        },
+                        selectedFilter !== 'All' && {
+                            backgroundColor: isDark ? '#FFFFFF' : '#000000',
+                            borderColor: isDark ? '#FFFFFF' : '#000000',
+                        }
                     ]}
                 >
                     <Ionicons
                         name="filter"
                         size={14}
-                        color={selectedFilter !== 'All' ? "#FFFFFF" : "#6B7280"}
+                        color={selectedFilter !== 'All' ? (isDark ? "#000000" : "#FFFFFF") : themeColors.textSecondary}
                     />
                     <Text style={[
                         styles.filterButtonText,
-                        selectedFilter !== 'All' && styles.filterButtonTextActive
+                        { color: themeColors.textSecondary },
+                        selectedFilter !== 'All' && { color: isDark ? '#000000' : '#FFFFFF' }
                     ]}>
                         {selectedFilter}
                     </Text>
@@ -41,24 +53,31 @@ export const FilterDropdown = ({ selectedFilter, onSelectFilter }) => {
 
                 {isOpen && (
                     <>
-                        <View style={styles.dropdown}>
+                        <View style={[styles.dropdown, {
+                            backgroundColor: themeColors.card,
+                            borderColor: themeColors.border
+                        }]}>
                             {FILTER_TYPES.map((type) => (
                                 <TouchableOpacity
                                     key={type}
                                     onPress={() => handleSelect(type)}
                                     style={[
                                         styles.dropdownItem,
-                                        selectedFilter === type && styles.dropdownItemSelected
+                                        selectedFilter === type && { backgroundColor: isDark ? '#374151' : '#F9FAFB' }
                                     ]}
                                 >
                                     <Text style={[
                                         styles.dropdownItemText,
-                                        selectedFilter === type && styles.dropdownItemTextSelected
+                                        { color: themeColors.textSecondary },
+                                        selectedFilter === type && {
+                                            color: themeColors.text,
+                                            fontWeight: '600'
+                                        }
                                     ]}>
                                         {type}
                                     </Text>
                                     {selectedFilter === type && (
-                                        <Ionicons name="checkmark" size={14} color="#000000" />
+                                        <Ionicons name="checkmark" size={14} color={themeColors.text} />
                                     )}
                                 </TouchableOpacity>
                             ))}
@@ -89,7 +108,6 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     headerText: {
-        color: '#1F2937',
         fontSize: 18,
         fontWeight: '700',
         letterSpacing: -0.3,
@@ -104,30 +122,18 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#FFFFFF',
-    },
-    filterButtonActive: {
-        backgroundColor: '#000000',
-        borderColor: '#000000',
     },
     filterButtonText: {
         fontSize: 12,
         fontWeight: '500',
-        color: '#6B7280',
         marginLeft: 6,
-    },
-    filterButtonTextActive: {
-        color: '#FFFFFF',
     },
     dropdown: {
         position: 'absolute',
         top: 40,
         right: 0,
-        backgroundColor: '#FFFFFF',
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#F3F4F6',
         width: 128,
         paddingVertical: 8,
         overflow: 'hidden',
@@ -145,16 +151,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    dropdownItemSelected: {
-        backgroundColor: '#F9FAFB',
-    },
     dropdownItemText: {
         fontSize: 14,
-        color: '#6B7280',
-    },
-    dropdownItemTextSelected: {
-        fontWeight: '600',
-        color: '#000000',
     },
     overlay: {
         position: 'absolute',

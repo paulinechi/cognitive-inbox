@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, FlatList, StyleSheet, TouchableOpacity, LayoutAnimation, UIManager } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { captureThought } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
@@ -16,9 +16,15 @@ import CollectionScreen from './CollectionScreen';
 import SettingScreen from './SettingScreen';
 import { NavigationTab } from '../components/NavigationTab';
 
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export default function CaptureScreen() {
     const { colors: themeColors, isDark } = useTheme();
-    const { logs, addLog, deleteLog, collections } = useLogs();
+    const { logs, addLog, deleteLog, collections, updateLog } = useLogs();
+    const insets = useSafeAreaInsets();
 
     const [activeTab, setActiveTab] = useState('Home');
     const [text, setText] = useState('');
@@ -26,6 +32,7 @@ export default function CaptureScreen() {
     const [toastMessage, setToastMessage] = useState('');
     const [selectedFilter, setSelectedFilter] = useState("All");
     const [selectedMemo, setSelectedMemo] = useState(null);
+    const [selectedMemoInitialEditMode, setSelectedMemoInitialEditMode] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
 
 
@@ -78,23 +85,7 @@ export default function CaptureScreen() {
         }
     };
 
-    const addLog = (result, originalInput, mediaUri = null, mediaType = null) => {
-        const newLog = {
-            id: result.id || Date.now().toString(),
-            types: result.memo_types || ["Other"],
-            summary: result.summary || originalInput,
-            originalInput: originalInput,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            action_items: result.action_items,
-            tags: result.tags,
-            emotional_tone: result.emotional_tone,
-            mediaUri: mediaUri,
-            mediaType: mediaType,
-        };
-        setLogs(prev => [newLog, ...prev]);
-        const primaryType = newLog.types[0];
-        showToast(`Saved as ${primaryType}`);
-    };
+
 
     const filteredLogs = useMemo(() => {
         if (selectedFilter === "All") return logs;
@@ -127,8 +118,9 @@ export default function CaptureScreen() {
         }
 
         // Default: Home (Capture) Screen
+        // Apply Home-specific padding here
         return (
-            <>
+            <View style={[styles.homeContainer, { paddingTop: insets.top + 24 }]}>
                 <View style={[styles.inputCard, {
                     backgroundColor: themeColors.card,
                     borderColor: themeColors.border,
@@ -166,7 +158,7 @@ export default function CaptureScreen() {
                         <TouchableOpacity
                             style={[
                                 styles.saveButton,
-                                (!text.trim() || loading) && { backgroundColor: '#E5E7EB' }
+                                (!text.trim() || loading) && { backgroundColor: isDark ? themeColors.border : '#E5E7EB' }
                             ]}
                             onPress={handleSend}
                             activeOpacity={0.7}
@@ -175,11 +167,11 @@ export default function CaptureScreen() {
                             <Ionicons
                                 name="send"
                                 size={18}
-                                color={!text.trim() || loading ? "#9CA3AF" : "white"}
+                                color={!text.trim() || loading ? (isDark ? themeColors.textSecondary : "#9CA3AF") : "white"}
                             />
                             <Text style={[
                                 styles.saveButtonText,
-                                (!text.trim() || loading) && { color: '#9CA3AF' }
+                                (!text.trim() || loading) && { color: isDark ? themeColors.textSecondary : '#9CA3AF' }
                             ]}>Save</Text>
                         </TouchableOpacity>
 
@@ -190,26 +182,12 @@ export default function CaptureScreen() {
 
                 <View style={styles.contentArea}>
                     {/* Landing Page Header - Shows when coming from Collection tab */}
-                    {selectedFilter !== "All" ? (
-                        <View style={styles.landingHeader}>
-                            <View>
-                                <Text style={[styles.landingLabel, { color: themeColors.placeholder }]}>Collection</Text>
-                                <Text style={[styles.landingTitle, { color: themeColors.text }]}>{selectedFilter}</Text>
-                            </View>
-                            <TouchableOpacity
-                                style={[styles.clearFilterBtn, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}
-                                onPress={() => setSelectedFilter("All")}
-                            >
-                                <Text style={{ color: themeColors.textSecondary, fontWeight: '600', fontSize: 12 }}>Clear</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        logs.length > 0 && (
-                            <FilterDropdown
-                                selectedFilter={selectedFilter}
-                                onSelectFilter={setSelectedFilter}
-                            />
-                        )
+                    {logs.length > 0 && (
+                        <FilterDropdown
+                            selectedFilter={selectedFilter}
+                            onSelectFilter={setSelectedFilter}
+                            collections={collections}
+                        />
                     )}
 
                     {filteredLogs.length === 0 ? (
@@ -227,9 +205,13 @@ export default function CaptureScreen() {
                             renderItem={({ item }) => (
                                 <LogItem
                                     item={item}
-                                    onDelete={(id) => deleteLog(id)}
-                                    onClick={(item) => {
+                                    onDelete={(id) => {
+                                        LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+                                        deleteLog(id);
+                                    }}
+                                    onClick={(item, editMode = false) => {
                                         setSelectedMemo(item);
+                                        setSelectedMemoInitialEditMode(editMode);
                                         setIsModalVisible(true);
                                     }}
                                 />
@@ -240,12 +222,12 @@ export default function CaptureScreen() {
                         />
                     )}
                 </View>
-            </>
+            </View>
         );
     };
 
     return (
-        <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
+        <SafeAreaView edges={['left', 'right']} style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.keyboardView}
@@ -254,8 +236,13 @@ export default function CaptureScreen() {
 
                 <MemoDetailModal
                     isVisible={isModalVisible}
-                    onClose={() => setIsModalVisible(false)}
+                    onClose={() => {
+                        setIsModalVisible(false);
+                        setSelectedMemoInitialEditMode(false);
+                    }}
                     memo={selectedMemo}
+                    initialEditMode={selectedMemoInitialEditMode}
+                    onMemoUpdate={updateLog}
                 />
 
                 {renderContent()}
@@ -283,8 +270,11 @@ const styles = StyleSheet.create({
     },
     keyboardView: {
         flex: 1,
+    },
+    homeContainer: {
+        flex: 1,
         paddingHorizontal: 24,
-        paddingTop: 48,
+        // paddingTop is dynamic
     },
     textInput: {
         fontSize: 16,
@@ -357,30 +347,5 @@ const styles = StyleSheet.create({
         zIndex: 100,
         elevation: 20,
     },
-    // New Landing Page Styles
-    landingHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        marginBottom: 20,
-        paddingHorizontal: 4,
-    },
-    landingLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 2,
-    },
-    landingTitle: {
-        fontSize: 28,
-        fontWeight: '700',
-        letterSpacing: -0.5,
-    },
-    clearFilterBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        marginBottom: 4,
-    },
+
 });

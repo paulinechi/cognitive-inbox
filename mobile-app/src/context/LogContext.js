@@ -1,40 +1,85 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const LogContext = createContext();
 
 export const LogProvider = ({ children }) => {
     const [logs, setLogs] = useState([]);
+    const [collections, setCollections] = useState([]);
 
-    // Initial default collections
-    const [collections, setCollections] = useState([
-        { id: 'Wishlist', title: 'Wishlist', type: 'Wishlist' },
-        { id: 'Task', title: 'Task', type: 'Task' },
-        { id: 'Idea', title: 'Ideas', type: 'Idea' },
-        { id: 'Reflection', title: 'Reflection', type: 'Reflection' },
-        { id: 'Insight', title: 'Insight', type: 'Insight' },
-        { id: 'Other', title: 'Other', type: 'Other' },
-    ]);
+    const getApiUrl = () => {
+        const Constants = require('expo-constants').default;
+        const debuggerHost = Constants.expoConfig?.hostUri;
+        if (debuggerHost) {
+            const host = debuggerHost.split(':').shift();
+            return `http://${host}:8000`;
+        }
+        return 'http://localhost:8000';
+    };
 
-    const addCollection = (name) => {
+    // Fetch collections from API on mount
+    useEffect(() => {
+        fetchCollections();
+        fetchLogs();
+    }, []);
+
+    const fetchCollections = async () => {
+        try {
+            const response = await fetch(`${getApiUrl()}/collections/`);
+            if (response.ok) {
+                const data = await response.json();
+                setCollections(data);
+            }
+        } catch (error) {
+            console.error('Error fetching collections:', error);
+        }
+    };
+
+    const addCollection = async (name) => {
         // Simple duplicate check
         if (collections.some(c => c.title.toLowerCase() === name.toLowerCase())) return;
 
-        const newCollection = {
-            id: name,
-            title: name,
-            type: name, // Custom types use the name itself
-            isCustom: true
-        };
-        setCollections(prev => [...prev, newCollection]);
+        try {
+            const response = await fetch(`${getApiUrl()}/collections/?title=${encodeURIComponent(name)}`, {
+                method: 'POST',
+            });
+
+            if (response.ok) {
+                const newCollection = await response.json();
+                setCollections(prev => [...prev, newCollection]);
+            }
+        } catch (error) {
+            console.error('Error creating collection:', error);
+        }
+    };
+
+    const updateCollection = async (collectionId, newTitle) => {
+        try {
+            const response = await fetch(`${getApiUrl()}/collections/${collectionId}?title=${encodeURIComponent(newTitle)}`, {
+                method: 'PUT',
+            });
+
+            if (response.ok) {
+                const updatedCollection = await response.json();
+                setCollections(prev => prev.map(c =>
+                    c.id === collectionId ? updatedCollection : c
+                ));
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error updating collection:', error);
+            return false;
+        }
     };
 
     const addLog = (result, originalInput, mediaUri = null, mediaType = null) => {
         const newLog = {
             id: result.id || Date.now().toString(),
-            type: result.memo_type || "Memo",
+            types: result.memo_types || ["Other"],
+            type: (result.memo_types && result.memo_types.length > 0) ? result.memo_types[0] : "Memo",
             summary: result.summary || originalInput,
             originalInput: originalInput,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date().toISOString(),
             action_items: result.action_items,
             tags: result.tags,
             emotional_tone: result.emotional_tone,
@@ -63,21 +108,76 @@ export const LogProvider = ({ children }) => {
         return newLog;
     };
 
-    const deleteLog = (id) => {
-        setLogs(prev => prev.filter(l => l.id !== id));
+    const deleteLog = async (id) => {
+        try {
+            const response = await fetch(`${getApiUrl()}/memos/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                setLogs(prev => prev.filter(l => l.id !== id));
+            } else {
+                console.error('Failed to delete log');
+            }
+        } catch (error) {
+            console.error('Error deleting log:', error);
+        }
     };
 
-    const deleteCollection = (collectionId) => {
-        // Remove the collection itself
-        setCollections(prev => prev.filter(c => c.id !== collectionId));
+    const deleteCollection = async (collectionId) => {
+        try {
+            const response = await fetch(`${getApiUrl()}/collections/${collectionId}`, {
+                method: 'DELETE',
+            });
 
-        // Remove all logs associated with this collection type
-        // Note: collectionId maps to 'type' in our logic for custom collections
-        setLogs(prev => prev.filter(log => log.type !== collectionId));
+            if (response.ok) {
+                // Remove the collection from state
+                setCollections(prev => prev.filter(c => c.id !== collectionId));
+
+                // Remove all logs associated with this collection type
+                setLogs(prev => prev.filter(log => log.type !== collectionId));
+            }
+        } catch (error) {
+            console.error('Error deleting collection:', error);
+        }
+    };
+
+    const fetchLogs = async () => {
+        try {
+            const response = await fetch(`${getApiUrl()}/memos/`);
+            if (response.ok) {
+                const memos = await response.json();
+                const formattedLogs = memos.map(memo => ({
+                    id: memo.id,
+                    types: memo.memo_types || ["Other"],
+                    type: (memo.memo_types && memo.memo_types.length > 0) ? memo.memo_types[0] : "Other",
+                    summary: memo.summary,
+                    originalInput: memo.original_input,
+                    timestamp: memo.updated_at || memo.created_at, // Use latest for timestamp
+                    updatedAt: memo.updated_at || memo.created_at,
+                    mediaType: memo.media_type,
+                    mediaUri: memo.media_uri,
+                    action_items: memo.action_items,
+                    tags: memo.tags,
+                    completed_action_items: memo.completed_action_items || [],
+                }));
+                setLogs(formattedLogs);
+            }
+        } catch (error) {
+            console.error('Error fetching memos:', error);
+        }
+    };
+
+    const updateLog = (memoId, updates) => {
+        setLogs(prev => prev.map(log =>
+            log.id === memoId
+                ? { ...log, ...updates }
+                : log
+        ));
     };
 
     return (
-        <LogContext.Provider value={{ logs, addLog, deleteLog, collections, addCollection, deleteCollection }}>
+        <LogContext.Provider value={{ logs, addLog, deleteLog, collections, addCollection, updateCollection, deleteCollection, fetchLogs, updateLog }}>
             {children}
         </LogContext.Provider>
     );
