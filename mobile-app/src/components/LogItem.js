@@ -13,10 +13,14 @@ export const LogItem = ({ item, onDelete, onClick }) => (
                 {item.summary}
             </Text>
             <View style={styles.metaContainer}>
-                <View style={styles.typeBadge}>
-                    <Text style={styles.typeText}>
-                        {item.type}
-                    </Text>
+                <View style={styles.typesList}>
+                    {item.types && item.types.map((type, index) => (
+                        <View key={index} style={styles.typeBadge}>
+                            <Text style={styles.typeText}>
+                                {type}
+                            </Text>
+                        </View>
+                    ))}
                 </View>
                 {item.timestamp && (
                     <Text style={styles.timestamp}>{item.timestamp}</Text>
@@ -65,6 +69,11 @@ const styles = StyleSheet.create({
     metaContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    typesList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
     },
     typeBadge: {
         backgroundColor: '#F3F4F6',

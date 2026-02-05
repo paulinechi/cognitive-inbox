@@ -1,15 +1,18 @@
 import whisper
 import tempfile
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 _model = None
 
 def get_whisper_model():
     global _model
     if _model is None:
-        print("Loading Whisper model (base)...")
+        logger.info("Loading Whisper model (base)...")
         _model = whisper.load_model("base")
-        print("Whisper model loaded successfully")
+        logger.info("Whisper model loaded successfully")
     return _model
 
 def transcribe_audio(audio_bytes: bytes, mime_type: str = None) -> str:
@@ -38,5 +41,6 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str = None) -> str:
                 os.unlink(temp_audio_path)
     
     except Exception as e:
-        print(f"Error transcribing audio with Whisper: {e}")
+        logger.error(f"Error transcribing audio with Whisper: {e}")
         return ""
+

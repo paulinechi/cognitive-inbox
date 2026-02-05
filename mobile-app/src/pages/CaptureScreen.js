@@ -1,16 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    FlatList,
-    StyleSheet,
-    TouchableOpacity
-} from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { captureThought } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useLogs } from '../context/LogContext';
@@ -34,9 +25,12 @@ export default function CaptureScreen() {
     const [loading, setLoading] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [selectedFilter, setSelectedFilter] = useState("All");
-
     const [selectedMemo, setSelectedMemo] = useState(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
+
+
+    // Lock to prevent double-submission
+    const isProcessing = useRef(false);
 
     const showToast = (message) => setToastMessage(message);
 
@@ -46,7 +40,8 @@ export default function CaptureScreen() {
     }, [collections]);
 
     const handleSend = async () => {
-        if (!text.trim()) return;
+        if (!text.trim()/* || isProcessing.current*/) return;
+        // isProcessing.current = true;
         setLoading(true);
         const inputText = text;
 
@@ -61,10 +56,13 @@ export default function CaptureScreen() {
             showToast('Error saving.');
         } finally {
             setLoading(false);
+            // isProcessing.current = false;
         }
     };
 
     const handleMediaCapture = async (uri, type) => {
+        // if (isProcessing.current) return;
+        // isProcessing.current = true;
         setLoading(true);
         try {
             // Pass custom tags to AI
@@ -76,12 +74,31 @@ export default function CaptureScreen() {
             showToast(`Error uploading ${type}.`);
         } finally {
             setLoading(false);
+            // isProcessing.current = false;
         }
+    };
+
+    const addLog = (result, originalInput, mediaUri = null, mediaType = null) => {
+        const newLog = {
+            id: result.id || Date.now().toString(),
+            types: result.memo_types || ["Other"],
+            summary: result.summary || originalInput,
+            originalInput: originalInput,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            action_items: result.action_items,
+            tags: result.tags,
+            emotional_tone: result.emotional_tone,
+            mediaUri: mediaUri,
+            mediaType: mediaType,
+        };
+        setLogs(prev => [newLog, ...prev]);
+        const primaryType = newLog.types[0];
+        showToast(`Saved as ${primaryType}`);
     };
 
     const filteredLogs = useMemo(() => {
         if (selectedFilter === "All") return logs;
-        return logs.filter(log => log.type === selectedFilter);
+        return logs.filter(log => log.types.includes(selectedFilter));
     }, [logs, selectedFilter]);
 
     const renderContent = () => {
@@ -118,16 +135,22 @@ export default function CaptureScreen() {
                     shadowOpacity: isDark ? 0 : 0.05
                 }]}>
                     <TextInput
-                        style={[styles.textInput, { color: themeColors.text }]}
+                        style={{
+                            color: '#374151',
+                            fontSize: 16,
+                            fontWeight: '400',
+                            lineHeight: 24,
+                            flex: 1,
+                            paddingBottom: 40,
+                        }}
                         placeholder="Write, speak, or drop anything here..."
                         placeholderTextColor={themeColors.placeholder}
                         multiline={true}
                         textAlignVertical="top"
                         value={text}
                         onChangeText={setText}
-                        onSubmitEditing={handleSend}
-                        returnKeyType="done"
-                        blurOnSubmit={true}
+                        returnKeyType="default"
+                        blurOnSubmit={false}
                     />
 
                     <View style={styles.iconContainer}>
@@ -139,7 +162,29 @@ export default function CaptureScreen() {
                             onCapture={(uri) => handleMediaCapture(uri, 'image')}
                             isProcessing={loading}
                         />
-                        {loading && <ActivityIndicator size="small" color={themeColors.textSecondary} />}
+
+                        <TouchableOpacity
+                            style={[
+                                styles.saveButton,
+                                (!text.trim() || loading) && { backgroundColor: '#E5E7EB' }
+                            ]}
+                            onPress={handleSend}
+                            activeOpacity={0.7}
+                            disabled={!text.trim() || loading}
+                        >
+                            <Ionicons
+                                name="send"
+                                size={18}
+                                color={!text.trim() || loading ? "#9CA3AF" : "white"}
+                            />
+                            <Text style={[
+                                styles.saveButtonText,
+                                (!text.trim() || loading) && { color: '#9CA3AF' }
+                            ]}>Save</Text>
+                        </TouchableOpacity>
+
+                        {loading && <ActivityIndicator size="small" color="#6366F1" style={{ marginLeft: 12 }} />}
+
                     </View>
                 </View>
 
@@ -261,10 +306,30 @@ const styles = StyleSheet.create({
     },
     iconContainer: {
         position: 'absolute',
-        bottom: 20,
-        right: 24,
+        bottom: 16,
+        right: 20,
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    saveButton: {
+        backgroundColor: '#6366F1',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginLeft: 12,
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    saveButtonText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 14,
+        marginLeft: 6,
     },
     contentArea: {
         flex: 1,

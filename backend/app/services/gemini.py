@@ -1,19 +1,24 @@
+import logging
 import google.generativeai as genai
 import os
 import json
 import typing_extensions as typing
 from app.models import MemoProcessed, MemoType, MemoInput
 
+logger = logging.getLogger(__name__)
+
 def configure_genai():
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        print("Warning: GOOGLE_API_KEY not found in environment variables")
+        logger.warning("Warning: GOOGLE_API_KEY not found in environment variables")
         return False
+    
+    logger.info(f"AI - Configuring Gemini API (Key length: {len(api_key)})")
     genai.configure(api_key=api_key)
     return True
 
 class MemoAnalysis(typing.TypedDict):
-    memo_type: str
+    memo_types: list[str]
     summary: str
     action_items: list[str]
     tags: list[str]
@@ -29,21 +34,35 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
         mime_type: MIME type of the file (e.g., 'audio/mp3', 'image/jpeg')
         available_tags: List of custom user tags/collections to consider
     """
-    configure_genai()
+    if not configure_genai():
+        logger.error("AI - Failed to configure Gemini")
+        return MemoProcessed(
+            original_input=text_input or "",
+            extracted_text=text_input or "",
+            memo_type=MemoType.OTHER,
+            summary="API configuration failed.",
+            confidence_score=0.0
+        )
     
-    model = genai.GenerativeModel('gemini-flash-latest')
+    # Prefer lite for free tier stability
+    model_name = 'gemini-2.0-flash'
+    logger.info(f"AI - Using model: {model_name}")
+    model = genai.GenerativeModel(model_name)
     
-    # Construct the allowed tags string
-    base_tags = ["#Work", "#Personal", "#Urgent", "#Learning", "#Health", "#Finance", "#Home", "#Tech", "#Creative"]
-    # Add user custom tags if provided (formatted with # if missing)
-    custom_tags = [tag if tag.startswith("#") else f"#{tag}" for tag in available_tags]
-    all_tags = list(set(base_tags + custom_tags))
-    tags_str = ", ".join(all_tags)
-
     prompt_parts = [
         "You are a helpful cognitive assistant. Analyze the following user input.",
-        f"Categorize it into exactly one of these types: Idea, Task, Wishlist, Reflection, Insight, Other, OR one of these custom user collections: {', '.join(available_tags)}.",
-        "Extract a concise, direct, and imperative summary (e.g., 'Buy eggs', 'Refactor code'). Avoid 'Reminder to...' or 'Note about...'.",
+        f"Categorize it into one OR MORE of the following types: {', '.join([t.value for t in MemoType])}.",
+        "If multiple categories apply, include all of them in the order of relevance.",
+        "Description of types:",
+        "- Brainstorming: team names, project ideas, creative inspirations.",
+        "- Task: to-do items, action items, work or personal chores.",
+        "- Wishlist: things to buy or do in the future without a pressing deadline.",
+        "- Collection: favorite restaurants, songs, recipes, scores, personal lists.",
+        "- Draft: draft emails, messages, or content to be sent.",
+        "- Note: basic info like phone numbers, IDs, addresses, or meeting takeaways.",
+        "- Reflection: mood, journal entries, personal thoughts, prayers.",
+        "- Other: anything that doesn't fit the above.",
+        "Extract a concise summary, any action items, relevant tags, and the emotional tone.",
         "If the input is an image, describe it efficiently and extract meaningful text or intent.",
         f"Assign strictly relevant tags from this allowed list only: {tags_str}. Do not invent new tags.",
         "Return the response in JSON format.",
@@ -73,13 +92,24 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
         
         result = json.loads(response.text)
         
-        # Use the raw string from AI, or default to Other
-        m_type = result.get("memo_type", "Other")
+        raw_types = result.get("memo_types", [])
+        if not isinstance(raw_types, list):
+            raw_types = [raw_types]
+            
+        final_types = []
+        for t in raw_types:
+            try:
+                final_types.append(MemoType(t))
+            except ValueError:
+                continue
+        
+        if not final_types:
+            final_types = [MemoType.OTHER]
             
         return MemoProcessed(
             original_input=text_input or f"[{mime_type}]",
             extracted_text=text_input or f"[{mime_type} Processed]", 
-            memo_type=m_type,
+            memo_types=final_types,
             summary=result.get("summary", ""),
             action_items=result.get("action_items", []),
             tags=result.get("tags", []),
@@ -88,11 +118,11 @@ def analyze_content(text_input: str = None, file_data: bytes = None, mime_type: 
         )
         
     except Exception as e:
-        print(f"Error calling Gemini: {e}")
+        logger.error(f"AI - Error calling Gemini: {e}")
         return MemoProcessed(
             original_input=text_input or "",
             extracted_text=text_input or "",
-            memo_type=MemoType.OTHER,
+            memo_types=[MemoType.OTHER],
             summary=text_input if text_input else "Could not process content",
             confidence_score=0.0
         )
