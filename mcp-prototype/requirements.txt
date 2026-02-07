@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+google-generativeai
+google-genai
+python-dotenv
+pydantic
+sqlalchemy
+mcp>=1.2.0
+typing-extensions
+python-multipart
