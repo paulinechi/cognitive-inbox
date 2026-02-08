@@ -8,7 +8,8 @@ import {
     StyleSheet,
     ScrollView,
     Modal,
-    ActivityIndicator
+    ActivityIndicator,
+    FlatList
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -108,28 +109,33 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                     activeOpacity={1}
                     onPress={() => setShowTagPicker(false)}
                 >
-                    <View style={[styles.modalContent, { backgroundColor: themeColors.card }]}>
+                    <View style={[styles.modalContent, { backgroundColor: themeColors.card, maxHeight: '80%' }]}>
                         <Text style={[styles.modalTitle, { color: themeColors.text }]}>Select Collection</Text>
-                        {tags.map((tag) => (
-                            <TouchableOpacity
-                                key={tag}
-                                style={styles.tagOption}
-                                onPress={() => {
-                                    onSelectFilter(tag);
-                                    setShowTagPicker(false);
-                                }}
-                            >
-                                <Text style={[
-                                    styles.tagText,
-                                    { color: selectedFilter === tag ? '#3B82F6' : themeColors.text }
-                                ]}>
-                                    {tag}
-                                </Text>
-                                {selectedFilter === tag && (
-                                    <Ionicons name="checkmark" size={20} color="#3B82F6" />
-                                )}
-                            </TouchableOpacity>
-                        ))}
+                        <FlatList
+                            data={tags}
+                            keyExtractor={(item) => item}
+                            style={{ maxHeight: 400 }}
+                            showsVerticalScrollIndicator={false}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.tagOption}
+                                    onPress={() => {
+                                        onSelectFilter(item);
+                                        setShowTagPicker(false);
+                                    }}
+                                >
+                                    <Text style={[
+                                        styles.tagText,
+                                        { color: selectedFilter === item ? '#3B82F6' : themeColors.text }
+                                    ]}>
+                                        {item}
+                                    </Text>
+                                    {selectedFilter === item && (
+                                        <Ionicons name="checkmark" size={20} color="#3B82F6" />
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        />
                     </View>
                 </TouchableOpacity>
             </Modal>

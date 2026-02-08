@@ -73,6 +73,7 @@ export const LogProvider = ({ children }) => {
     };
 
     const addLog = (result, originalInput, mediaUri = null, mediaType = null) => {
+        const apiUrl = getApiUrl();
         const newLog = {
             id: result.id || Date.now().toString(),
             types: result.memo_types || ["Other"],
@@ -83,7 +84,7 @@ export const LogProvider = ({ children }) => {
             action_items: result.action_items,
             tags: result.tags,
             emotional_tone: result.emotional_tone,
-            mediaUri: mediaUri,
+            mediaUri: mediaUri && mediaUri.startsWith('/') ? `${apiUrl}${mediaUri}` : mediaUri,
             mediaType: mediaType,
         };
         setCollections(prev => {
@@ -131,11 +132,23 @@ export const LogProvider = ({ children }) => {
             });
 
             if (response.ok) {
+                // Find the collection to get its type/title
+                const collectionToDelete = collections.find(c => c.id === collectionId);
+                const typeToDelete = collectionToDelete ? collectionToDelete.type : null;
+
                 // Remove the collection from state
                 setCollections(prev => prev.filter(c => c.id !== collectionId));
 
                 // Remove all logs associated with this collection type
-                setLogs(prev => prev.filter(log => log.type !== collectionId));
+                if (typeToDelete) {
+                    setLogs(prev => prev.filter(log => {
+                        // Check if the log's primary type matches
+                        if (log.type === typeToDelete) return false;
+                        // Check if it's in the types array
+                        if (log.types && log.types.includes(typeToDelete)) return false;
+                        return true;
+                    }));
+                }
             }
         } catch (error) {
             console.error('Error deleting collection:', error);
@@ -144,7 +157,8 @@ export const LogProvider = ({ children }) => {
 
     const fetchLogs = async () => {
         try {
-            const response = await fetch(`${getApiUrl()}/memos/`);
+            const apiUrl = getApiUrl();
+            const response = await fetch(`${apiUrl}/memos/`);
             if (response.ok) {
                 const memos = await response.json();
                 const formattedLogs = memos.map(memo => ({
@@ -156,7 +170,7 @@ export const LogProvider = ({ children }) => {
                     timestamp: memo.updated_at || memo.created_at, // Use latest for timestamp
                     updatedAt: memo.updated_at || memo.created_at,
                     mediaType: memo.media_type,
-                    mediaUri: memo.media_uri,
+                    mediaUri: memo.media_uri ? `${apiUrl}${memo.media_uri}` : null,
                     action_items: memo.action_items,
                     tags: memo.tags,
                     completed_action_items: memo.completed_action_items || [],

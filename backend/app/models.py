@@ -52,7 +52,6 @@ class CollectionModel(Base):
     is_custom = Column(Boolean, default=False)
     created_at = Column(String)
 
-
 # Pydantic models
 class MemoInput(BaseModel):
     text: Optional[str] = None
@@ -73,11 +72,16 @@ class Memo(MemoProcessed):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     archived: bool = False
+    archived: bool = False
     completed_action_items: List[int] = []
+    
+    # Media
+    media_uri: Optional[str] = None
+    media_type: Optional[str] = None
+    original_memo_type: Optional[str] = None
 
     class Config:
         from_attributes = True
-
 
 class Collection(BaseModel):
     id: str

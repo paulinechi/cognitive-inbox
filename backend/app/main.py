@@ -2,12 +2,17 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-
+from fastapi.staticfiles import StaticFiles
+import os
+import mimetypes
 from .config import get_settings
 from .database import engine, Base
 from .routers import memos, collections
+from .database import SessionLocal
+from .models import CollectionModel
+import uuid
+from datetime import datetime
 
-# Setup Logging
 settings = get_settings()
 logging.basicConfig(
     level=logging.INFO,
@@ -18,19 +23,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Lifecycle Management
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Create tables if not exist
-    # In production, use Alembic/migrations instead.
     logger.info("Startup - Verifying database schema...")
     Base.metadata.create_all(bind=engine)
-    
-    # Initialize default collections if empty
-    from .database import SessionLocal
-    from .models import CollectionModel
-    import uuid
-    from datetime import datetime
     
     db = SessionLocal()
     try:
@@ -60,7 +56,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Middleware
+mimetypes.add_type('audio/mp4', '.m4a')
+UPLOAD_DIR = "uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,

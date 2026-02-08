@@ -1,5 +1,6 @@
+
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Animated, Dimensions, StyleSheet, Image, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, Animated, Dimensions, StyleSheet, Image, TextInput, KeyboardAvoidingView, Platform, FlatList, Keyboard, LayoutAnimation, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
@@ -72,6 +73,7 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
     const [types, setTypes] = useState([]);
     const [actionItems, setActionItems] = useState([]);
     const [completedItems, setCompletedItems] = useState([]);
+    const [originalType, setOriginalType] = useState(null); // Track original type for reverting
     const [updatedAt, setUpdatedAt] = useState('');
 
     // Temporary inputs
@@ -82,17 +84,23 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
 
     useEffect(() => {
         if (isVisible && memo) {
+
             Animated.spring(slideAnim, {
                 toValue: 0,
                 useNativeDriver: true,
                 friction: 8,
             }).start();
-
+            // ... (rest of the effect)
             // Initialize state
             setSummary(memo.summary || '');
             setOriginalInput(memo.originalInput || '');
             setTags(memo.tags || []);
             setTypes(memo.types || []);
+            // Set original type from backend or fallback to first type if not 'Completed'
+            const initialTypes = memo.types || [];
+            const isCompleted = initialTypes.includes('Completed');
+            setOriginalType(memo.original_memo_type || (isCompleted ? 'Task' : initialTypes[0] || 'Task'));
+
             setActionItems(memo.action_items || []);
             setCompletedItems(memo.completed_action_items || []);
 
@@ -224,7 +232,14 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
                 if (response.ok) {
                     const result = await response.json();
                     setCompletedItems(result.completed_action_items);
-                    if (onMemoUpdate) onMemoUpdate(memo.id, { completed_action_items: result.completed_action_items });
+                    setTypes(result.memo_types); // Update local types state
+                    if (onMemoUpdate) {
+                        onMemoUpdate(memo.id, {
+                            completed_action_items: result.completed_action_items,
+                            types: result.memo_types,
+                            type: result.memo_types[0]
+                        });
+                    }
                 }
             } catch (e) { console.error(e); }
             return;
@@ -238,6 +253,14 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
             newCompleted = [...completedItems, index];
         }
         setCompletedItems(newCompleted);
+
+        // Auto-update status in Edit Mode
+        const allCompleted = newCompleted.length === actionItems.length && actionItems.length > 0;
+        if (allCompleted) {
+            setTypes(['Completed']);
+        } else if (types.includes('Completed')) {
+            setTypes([originalType || 'Task']);
+        }
     };
 
     const handleDeleteAction = (index) => {
@@ -248,12 +271,26 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
             .filter(i => i !== index)
             .map(i => i > index ? i - 1 : i);
         setCompletedItems(newCompleted);
+
+        // Check completion status after delete
+        const allCompleted = newCompleted.length === newItems.length && newItems.length > 0;
+        if (allCompleted) {
+            setTypes(['Completed']);
+        } else if (types.includes('Completed') && newItems.length > 0) {
+            setTypes([originalType || 'Task']);
+        }
     };
 
     const handleAddAction = () => {
         if (!newActionItem.trim()) return;
-        setActionItems([...actionItems, newActionItem.trim()]);
+        const newItems = [...actionItems, newActionItem.trim()];
+        setActionItems(newItems);
         setNewActionItem('');
+
+        // Revert to original type if properly adding new item (since it's incomplete by default)
+        if (types.includes('Completed')) {
+            setTypes([originalType || 'Task']);
+        }
     };
 
     const handleEditActionText = (text, index) => {
@@ -280,6 +317,9 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
         // Replace current types with selected one (single select behavior for dropdown)
         // Or toggle? User said "reassign".
         setTypes([selectedType]);
+        if (selectedType !== 'Completed') {
+            setOriginalType(selectedType);
+        }
         setShowTypeSelector(false);
     };
 
@@ -291,11 +331,23 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
                     await sound.pauseAsync();
                     setIsPlaying(false);
                 } else {
+                    await Audio.setAudioModeAsync({
+                        allowsRecordingIOS: false,
+                        playsInSilentModeIOS: true,
+                        shouldDuckAndroid: true,
+                        staysActiveInBackground: false,
+                    });
                     await sound.playAsync();
                     setIsPlaying(true);
                 }
             } else {
                 setIsLoadingAudio(true);
+                await Audio.setAudioModeAsync({
+                    allowsRecordingIOS: false,
+                    playsInSilentModeIOS: true,
+                    shouldDuckAndroid: true,
+                    staysActiveInBackground: false,
+                });
                 const { sound: newSound } = await Audio.Sound.createAsync(
                     { uri: memo.mediaUri },
                     { shouldPlay: true },
@@ -313,8 +365,14 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
 
     if (!memo) return null;
 
+    const isAudio = (memo.mediaType && memo.mediaType.toLowerCase().startsWith('audio')) ||
+        (memo.mediaUri && /\.(m4a|mp3|wav|aac|ogg)$/i.test(memo.mediaUri));
+
+    const isImage = (memo.mediaType && memo.mediaType.toLowerCase().startsWith('image')) ||
+        (memo.mediaUri && /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(memo.mediaUri));
+
     return (
-        <Modal transparent visible={isVisible} animationType="fade" onRequestClose={handleClose}>
+        <Modal transparent visible={isVisible} animationType="fade" onRequestClose={handleClose} statusBarTranslucent>
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.backdrop}>
                 <TouchableOpacity style={styles.backdropTouch} onPress={handleClose} />
 
@@ -340,30 +398,32 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
                                 ))}
                             </View>
                             {showTypeSelector && (
-                                <View style={[styles.dropdownContainer, dynamicStyles.container]}>
-                                    <View style={styles.selectorList}>
-                                        {availableTypes.map((type) => (
+                                <View style={[styles.dropdownContainer, dynamicStyles.container, { height: 'auto', maxHeight: 250 }]}>
+                                    <FlatList
+                                        data={availableTypes}
+                                        keyExtractor={(item) => item}
+                                        style={[styles.selectorList, { maxHeight: 250 }]}
+                                        nestedScrollEnabled={true}
+                                        showsVerticalScrollIndicator={false}
+                                        renderItem={({ item }) => (
                                             <TouchableOpacity
-                                                key={type}
                                                 style={[
                                                     styles.selectorItem,
                                                     { borderBottomColor: themeColors.border },
                                                     dynamicStyles.modalContent,
-                                                    types.includes(type) && [styles.selectorItemSelected, dynamicStyles.container]
+                                                    types.includes(item) && [styles.selectorItemSelected, dynamicStyles.container]
                                                 ]}
-                                                onPress={() => handleTypeSelect(type)}
+                                                onPress={() => handleTypeSelect(item)}
                                             >
                                                 <Text style={[
                                                     styles.selectorItemText,
                                                     dynamicStyles.text,
-                                                    types.includes(type) && [styles.selectorItemTextSelected, dynamicStyles.text]
-                                                ]}>{type}</Text>
-                                                {types.includes(type) && (
-                                                    <Ionicons name="checkmark" size={16} color={themeColors.text} style={{ marginLeft: 4 }} />
-                                                )}
+                                                    types.includes(item) && [styles.selectorItemTextSelected, dynamicStyles.text]
+                                                ]}>{item}</Text>
+                                                {types.includes(item) && <Ionicons name="checkmark" size={16} color={themeColors.text} />}
                                             </TouchableOpacity>
-                                        ))}
-                                    </View>
+                                        )}
+                                    />
                                 </View>
                             )}
                             <Text style={styles.timestamp}>{formatTimestamp(updatedAt)}</Text>
@@ -402,19 +462,25 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
                         )}
 
                         {/* Audio/Image Content (Read Only) */}
-                        {memo.mediaType === 'audio' && memo.mediaUri && (
+                        {isAudio && memo.mediaUri && (
                             <View style={styles.mediaSection}>
-                                <TouchableOpacity style={styles.audioButton} onPress={playAudio} disabled={isLoadingAudio}>
-                                    <Ionicons name={isPlaying ? "pause-circle" : "play-circle"} size={48} color="#000000" />
-                                    <Text style={styles.audioButtonText}>{isLoadingAudio ? 'Loading...' : isPlaying ? 'Pause' : 'Play Recording'}</Text>
+                                <TouchableOpacity
+                                    style={[styles.audioButton, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}
+                                    onPress={playAudio}
+                                    disabled={isLoadingAudio}
+                                >
+                                    <Ionicons name={isPlaying ? "pause-circle" : "play-circle"} size={48} color={themeColors.text} />
+                                    <Text style={[styles.audioButtonText, { color: themeColors.text }]}>{isLoadingAudio ? 'Loading...' : isPlaying ? 'Pause' : 'Play Recording'}</Text>
                                 </TouchableOpacity>
-                                <View style={styles.transcriptionContainer}>
+                                <View style={[styles.transcriptionContainer, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
                                     <Text style={styles.transcriptionLabel}>Transcription</Text>
-                                    <Text style={styles.transcriptionText}>"{memo.summary}"</Text>
+                                    <Text style={[styles.transcriptionText, { color: themeColors.text }]}>
+                                        "{memo.originalInput || "No transcription available"}"
+                                    </Text>
                                 </View>
                             </View>
                         )}
-                        {memo.mediaType === 'image' && memo.mediaUri && (
+                        {isImage && memo.mediaUri && (
                             <View style={styles.mediaSection}>
                                 <Image source={{ uri: memo.mediaUri }} style={styles.image} resizeMode="cover" />
                             </View>
@@ -462,10 +528,11 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
 
                                         {isEditing && (
                                             <View style={styles.addInputRow}>
-                                                <Ionicons name="add" size={20} color="#9CA3AF" />
+                                                <Ionicons name="add" size={20} color={themeColors.textSecondary} />
                                                 <TextInput
-                                                    style={styles.addInput}
+                                                    style={[styles.addInput, { color: themeColors.text }]}
                                                     placeholder="Add action item..."
+                                                    placeholderTextColor={themeColors.textSecondary}
                                                     value={newActionItem}
                                                     onChangeText={setNewActionItem}
                                                     onSubmitEditing={handleAddAction}
@@ -534,7 +601,7 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
 
                 </Animated.View>
             </KeyboardAvoidingView>
-        </Modal>
+        </Modal >
     );
 };
 

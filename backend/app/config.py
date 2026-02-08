@@ -1,7 +1,6 @@
 from pydantic_settings import BaseSettings
 import os
 from functools import lru_cache
-
 import yaml
 from typing import List
 import logging

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../context/ThemeContext';
@@ -55,32 +55,39 @@ export const FilterDropdown = ({ selectedFilter, onSelectFilter, collections = [
                     <>
                         <View style={[styles.dropdown, {
                             backgroundColor: themeColors.card,
-                            borderColor: themeColors.border
+                            borderColor: themeColors.border,
+                            maxHeight: 300
                         }]}>
-                            {FILTER_TYPES.map((type) => (
-                                <TouchableOpacity
-                                    key={type}
-                                    onPress={() => handleSelect(type)}
-                                    style={[
-                                        styles.dropdownItem,
-                                        selectedFilter === type && { backgroundColor: isDark ? '#374151' : '#F9FAFB' }
-                                    ]}
-                                >
-                                    <Text style={[
-                                        styles.dropdownItemText,
-                                        { color: themeColors.textSecondary },
-                                        selectedFilter === type && {
-                                            color: themeColors.text,
-                                            fontWeight: '600'
-                                        }
-                                    ]}>
-                                        {type}
-                                    </Text>
-                                    {selectedFilter === type && (
-                                        <Ionicons name="checkmark" size={14} color={themeColors.text} />
-                                    )}
-                                </TouchableOpacity>
-                            ))}
+                            <FlatList
+                                data={FILTER_TYPES}
+                                keyExtractor={(item) => item}
+                                style={{ maxHeight: 300 }}
+                                nestedScrollEnabled={true}
+                                showsVerticalScrollIndicator={false}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        onPress={() => handleSelect(item)}
+                                        style={[
+                                            styles.dropdownItem,
+                                            selectedFilter === item && { backgroundColor: isDark ? '#374151' : '#F9FAFB' }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            styles.dropdownItemText,
+                                            { color: themeColors.textSecondary },
+                                            selectedFilter === item && {
+                                                color: themeColors.text,
+                                                fontWeight: '600'
+                                            }
+                                        ]}>
+                                            {item}
+                                        </Text>
+                                        {selectedFilter === item && (
+                                            <Ionicons name="checkmark" size={14} color={themeColors.text} />
+                                        )}
+                                    </TouchableOpacity>
+                                )}
+                            />
                         </View>
                     </>
                 )}
@@ -103,7 +110,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 16,
-        paddingHorizontal: 4,
+        // paddingHorizontal: 4, // Removed to align with cards
         zIndex: 20,
         position: 'relative',
     },

@@ -24,50 +24,63 @@ console.log('API URL:', API_URL);
  * @returns {Promise<Object>} Processed memo object
  * @throws {Error} If the request fails or input is invalid
  */
+import { uploadAsync } from 'expo-file-system/legacy';
+
+/**
+ * Captures a thought (text, audio, or image) and sends it to the backend for processing.
+ * 
+ * @param {string | Object} input - Either a text string or an object with {type, uri}
+ * @param {string[]} tags - Available custom tags for categorization
+ * @returns {Promise<Object>} Processed memo object
+ * @throws {Error} If the request fails or input is invalid
+ */
 export const captureThought = async (input, tags = []) => {
     try {
-        const formData = new FormData();
-
-        // Send available tags for dynamic categorization
-        formData.append('available_tags', JSON.stringify(tags));
-
+        // Case 1: Text Input (Use standard fetch)
         if (typeof input === 'string') {
+            const formData = new FormData();
+            formData.append('available_tags', JSON.stringify(tags));
             formData.append('text', input);
-        } else if (input?.type === 'audio') {
-            formData.append('file', {
-                uri: input.uri,
-                name: 'recording.m4a',
-                type: 'audio/m4a',
-            });
-        } else if (input?.type === 'image') {
-            const uriParts = input.uri.split('.');
-            const fileType = uriParts[uriParts.length - 1];
 
-            formData.append('file', {
-                uri: input.uri,
-                name: `photo.${fileType}`,
-                type: `image/${fileType}`,
+            const response = await fetch(`${API_URL}/memos/capture`, {
+                method: 'POST',
+                body: formData,
             });
-        } else {
-            throw new Error('Invalid input: must be a string or object with type and uri');
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
+            return await response.json();
         }
 
-        // Updated endpoint to match new router structure
-        const response = await fetch(`${API_URL}/memos/capture`, {
-            method: 'POST',
-            body: formData,
-        });
+        // Case 2: File Input (Use FileSystem.uploadAsync for better Android stability)
+        if (input?.type === 'audio' || input?.type === 'image') {
+            const uri = input.uri;
+            const fileType = input.type === 'audio' ? 'audio/mp4' : `image/${uri.split('.').pop()}`;
+            const fileName = input.type === 'audio' ? 'recording.m4a' : `photo.${uri.split('.').pop()}`;
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`API Error ${response.status}:`, errorText);
-            throw new Error(`Server error: ${response.status} - ${errorText}`);
+            const uploadResult = await uploadAsync(`${API_URL}/memos/capture`, uri, {
+                fieldName: 'file',
+                httpMethod: 'POST',
+                uploadType: 1, // FileSystem.FileSystemUploadType.MULTIPART = 1
+                mimeType: fileType,
+                parameters: {
+                    'available_tags': JSON.stringify(tags)
+                }
+            });
+
+            if (uploadResult.status !== 200) {
+                throw new Error(`Server error: ${uploadResult.status} - ${uploadResult.body}`);
+            }
+
+            return JSON.parse(uploadResult.body);
         }
 
-        return await response.json();
+        throw new Error('Invalid input: must be a string or object with type and uri');
+
     } catch (error) {
         console.error("Capture failed:", error);
-        // Re-throw with more context
         throw new Error(`Failed to capture thought: ${error.message}`);
     }
 };

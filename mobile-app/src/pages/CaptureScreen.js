@@ -74,7 +74,9 @@ export default function CaptureScreen() {
         try {
             // Pass custom tags to AI
             const result = await captureThought({ type, uri }, customTags);
-            const newLog = addLog(result, type === 'audio' ? "Audio Note" : "Photo Note", uri, type);
+            // Use actual transcription if available
+            const transcription = result.original_input || (type === 'audio' ? "Audio Note" : "Photo Note");
+            const newLog = addLog(result, transcription, result.media_uri, result.media_type);
             showToast(`Saved as ${newLog.type}`);
         } catch (error) {
             console.error(error);
