@@ -1,0 +1,13 @@
+collections:
+  - Memo
+  - Task
+  - Wishlist
+  - Journal
+  - Ideas
+  - Other
+  - Completed
+
+gemini_model: "gemini-flash-lite-latest"
+database_url: "sqlite:///./cognitive_inbox.db"
+cors_origins:
+  - "*"
