@@ -6,6 +6,5 @@ sqlalchemy
 pydantic
 pydantic-settings
 python-dotenv
-openai-whisper
 PyYAML
 typing-extensions

@@ -7,7 +7,6 @@ from fastapi import UploadFile, HTTPException
 
 from ..models import Memo, MemoModel, MemoProcessed, MemoInput
 from ..services.gemini import analyze_content
-from ..services.whisper import transcribe_audio
 import shutil
 import os
 
@@ -43,23 +42,13 @@ class MemoService:
 
         file_bytes = None
         mime_type = None
-        transcribed_text = None
-
         if file:
             file_bytes = await file.read()
             mime_type = file.content_type
             logger.info(f"FILE - uploaded: {file.filename}, MIME type: {mime_type}, Size: {len(file_bytes)} bytes")
             
             if mime_type and "audio" in mime_type:
-                logger.info("AUDIO - Transcribing with Whisper...")
-                transcribed_text = transcribe_audio(file_bytes, mime_type)
-                logger.info(f"OK - Transcription complete: {transcribed_text[:100]}..." if transcribed_text and len(transcribed_text) > 100 else f"OK - Transcription complete: {transcribed_text}")
-                
-                if transcribed_text:
-                    text = transcribed_text
-                    # We continue to save the file even if transcribed, so we can play it back
-                    # file_bytes = None  <-- Removed this optimization to ensure we have bytes to save if necessary
-                    # mime_type = None   <-- Kept mime_type for DB
+                logger.info("AUDIO - Skipping local transcription; Gemini will transcribe.")
                 
         # Save file if present
         media_uri = None
