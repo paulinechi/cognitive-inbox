@@ -61,9 +61,8 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
         setTimeout(async () => {
             try {
                 const result = await DocumentPicker.getDocumentAsync({
-                    // Use '*/*' to ensure Google Drive files are visible
-                    // Sometimes MIME types from cloud storage are inconsistent
-                    type: '*/*',
+                    // Restrict to zip files
+                    type: ['application/zip', 'application/x-zip-compressed'],
                     copyToCacheDirectory: true,
                 });
 
@@ -72,14 +71,14 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                 const file = result.assets[0];
                 const fileName = file.name.toLowerCase();
 
-                // Validate file extension - only allow .txt, .json, .md
-                const allowedExtensions = ['.txt', '.json', '.md'];
+                // Validate file extension - only allow .zip
+                const allowedExtensions = ['.zip'];
                 const isValidFile = allowedExtensions.some(ext => fileName.endsWith(ext));
 
                 if (!isValidFile) {
                     showAlert(
                         "Invalid File Type",
-                        "Please select a .txt, .json, or .md file."
+                        "Please select a .zip file."
                     );
                     return;
                 }
