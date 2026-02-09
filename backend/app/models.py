@@ -42,6 +42,7 @@ class MemoModel(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     media_type = Column(String, nullable=True)
     media_uri = Column(String, nullable=True)
+    html_content = Column(Text, nullable=True)  # Store Markdown-converted HTML content
 
 class CollectionModel(Base):
     __tablename__ = "collections"
@@ -51,7 +52,6 @@ class CollectionModel(Base):
     type = Column(String, nullable=False)
     is_custom = Column(Boolean, default=False)
     created_at = Column(String)
-
 
 # Pydantic models
 class MemoInput(BaseModel):
@@ -73,11 +73,15 @@ class Memo(MemoProcessed):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     archived: bool = False
+    archived: bool = False
     completed_action_items: List[int] = []
-
+    
+    # Media
+    media_uri: Optional[str] = None
+    media_type: Optional[str] = None
+    original_memo_type: Optional[str] = None
     class Config:
         from_attributes = True
-
 
 class Collection(BaseModel):
     id: str

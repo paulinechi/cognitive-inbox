@@ -3,12 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List
 import uuid
 from datetime import datetime
-
+from ..models import MemoModel
 from ..database import get_db
 from ..models import Collection, CollectionModel
 
 router = APIRouter(prefix="/collections", tags=["collections"])
-
 
 @router.get("/", response_model=List[Collection])
 def get_collections(db: Session = Depends(get_db)):
@@ -78,7 +77,10 @@ def delete_collection(collection_id: str, db: Session = Depends(get_db)):
     if not collection.is_custom:
         raise HTTPException(status_code=400, detail="Cannot delete default collections")
     
+    search_term = f'%"{collection.type}"%'
+    db.query(MemoModel).filter(MemoModel.memo_types.like(search_term)).delete(synchronize_session=False)
+
     db.delete(collection)
     db.commit()
     
-    return {"message": "Collection deleted successfully"}
+    return {"message": "Collection and associated notes deleted successfully"}

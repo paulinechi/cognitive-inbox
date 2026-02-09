@@ -18,6 +18,9 @@ export const VoiceRecorder = ({ onRecordingComplete, isProcessing }) => {
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: true,
                 playsInSilentModeIOS: true,
+                staysActiveInBackground: true,
+                shouldDuckAndroid: true,
+                playThroughEarpieceAndroid: false,
             });
 
             console.log('Starting recording..');

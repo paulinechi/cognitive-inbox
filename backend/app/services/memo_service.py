@@ -8,8 +8,24 @@ from fastapi import UploadFile, HTTPException
 from ..models import Memo, MemoModel, MemoProcessed, MemoInput
 from ..services.gemini import analyze_content
 from ..services.whisper import transcribe_audio
+import shutil
+import os
 
 logger = logging.getLogger(__name__)
+
+UPLOAD_DIR = "uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
+def save_upload_file(file: UploadFile) -> str:
+    file_ext = file.filename.split('.')[-1] if '.' in file.filename else "bin"
+    safe_filename = f"{uuid.uuid4()}.{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, safe_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    return f"/uploads/{safe_filename}"
 
 class MemoService:
     @staticmethod
@@ -41,9 +57,20 @@ class MemoService:
                 
                 if transcribed_text:
                     text = transcribed_text
-                    file_bytes = None # We processed it, so maybe we don't need to send audio to Gemini if we have text? 
-                                      # Use case specific. The original code set file_bytes to None if transcribed.
-                    mime_type = None
+                    # We continue to save the file even if transcribed, so we can play it back
+                    # file_bytes = None  <-- Removed this optimization to ensure we have bytes to save if necessary
+                    # mime_type = None   <-- Kept mime_type for DB
+                
+        # Save file if present
+        media_uri = None
+        media_type_db = None
+        
+        if file:
+            # We need to reset file cursor because we read it above
+            await file.seek(0)
+            media_uri = save_upload_file(file)
+            media_type_db = mime_type
+            logger.info(f"FILE - Saved to disk: {media_uri}")
 
         logger.info("AI - Sending content to Gemini for analysis...")
         processed_data = analyze_content(
@@ -65,7 +92,9 @@ class MemoService:
             tags=json.dumps(processed_data.tags),
             emotional_tone=processed_data.emotional_tone,
             confidence_score=processed_data.confidence_score,
-            created_at=datetime.now(timezone.utc).isoformat()
+            created_at=datetime.now(timezone.utc).isoformat(),
+            media_uri=media_uri,
+            media_type=media_type_db
         )
         
         logger.info(f"DB - Saving memo to database with ID: {new_id}")
@@ -87,7 +116,11 @@ class MemoService:
             created_at=db_memo.created_at,
             updated_at=db_memo.updated_at.isoformat() if db_memo.updated_at else db_memo.created_at,
             archived=False,
-            completed_action_items=json.loads(db_memo.completed_action_items or "[]")
+
+            completed_action_items=json.loads(db_memo.completed_action_items or "[]"),
+            media_uri=db_memo.media_uri,
+            media_type=db_memo.media_type,
+            original_memo_type=db_memo.original_memo_type
         )
 
     @staticmethod
@@ -107,7 +140,11 @@ class MemoService:
                 created_at=memo.created_at,
                 updated_at=memo.updated_at.isoformat() if memo.updated_at else memo.created_at,
                 archived=False,
-                completed_action_items=json.loads(getattr(memo, 'completed_action_items', '[]') or '[]')
+
+                completed_action_items=json.loads(getattr(memo, 'completed_action_items', '[]') or '[]'),
+                media_uri=memo.media_uri,
+                media_type=memo.media_type,
+                original_memo_type=memo.original_memo_type
             ) for memo in memos
         ]
 
@@ -222,4 +259,5 @@ class MemoService:
             "created_at": memo.created_at,
             "updated_at": memo.updated_at.isoformat() if memo.updated_at else memo.created_at,
             "archived": False,
+            "original_memo_type": memo.original_memo_type
         }

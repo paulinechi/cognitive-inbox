@@ -18,6 +18,7 @@ import { useLogs } from '../context/LogContext';
 import { MemoDetailModal } from '../components/MemoDetailModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CustomAlert from '../components/CustomAlert';
 
 export default function CollectionScreen({ onSelectCategory }) {
     const { colors: themeColors } = useTheme();
@@ -35,10 +36,29 @@ export default function CollectionScreen({ onSelectCategory }) {
 
     // Note list and detail modal state
     const [isNoteListVisible, setIsNoteListVisible] = useState(false);
-    const [selectedCollectionNotes, setSelectedCollectionNotes] = useState([]);
+    const [selectedCollectionType, setSelectedCollectionType] = useState(null);
     const [selectedCollectionTitle, setSelectedCollectionTitle] = useState('');
     const [isNoteDetailVisible, setIsNoteDetailVisible] = useState(false);
     const [selectedNoteDetail, setSelectedNoteDetail] = useState(null);
+
+    // Derived state for notes to ensure UI updates immediately
+    const selectedCollectionNotes = useMemo(() => {
+        if (!selectedCollectionType) return [];
+        return logs.filter(log => log.type === selectedCollectionType);
+    }, [logs, selectedCollectionType]);
+
+    // Custom Alert State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ title: '', message: '', buttons: [] });
+
+    const showAlert = (title, message, buttons) => {
+        setAlertConfig({ title, message, buttons });
+        setAlertVisible(true);
+    };
+
+    const hideAlert = () => {
+        setAlertVisible(false);
+    };
 
     // Store refs to all swipeable items
     const swipeableRefs = useRef({});
@@ -75,15 +95,16 @@ export default function CollectionScreen({ onSelectCategory }) {
     const handleBulkDelete = () => {
         if (selectedCollections.length === 0) return;
 
-        Alert.alert(
+        showAlert(
             "Delete Collections",
             `Delete ${selectedCollections.length} collection(s)? All notes in these collections will also be deleted.`,
             [
-                { text: "Cancel", style: "cancel" },
+                { text: "Cancel", style: "cancel", onPress: hideAlert },
                 {
                     text: "Delete",
                     style: "destructive",
                     onPress: async () => {
+                        hideAlert();
                         // Delete all simultaneously for smooth animation
                         await Promise.all(
                             selectedCollections.map(id => deleteCollection(id))
@@ -97,17 +118,18 @@ export default function CollectionScreen({ onSelectCategory }) {
     };
 
     const handleCollectionClick = (collection) => {
-        // Filter notes by collection type
-        const filteredNotes = logs.filter(log => log.type === collection.type);
+        // Filter notes by collection type using global logs state
+        // We use derived state, so we just check if any exist first for the alert
+        const hasNotes = logs.some(log => log.type === collection.type);
 
-        if (filteredNotes.length === 0) {
-            Alert.alert(
+        if (!hasNotes) {
+            showAlert(
                 "No Notes",
                 `There are no notes in "${collection.title}" yet.`,
-                [{ text: "OK" }]
+                [{ text: "OK", onPress: hideAlert }]
             );
         } else {
-            setSelectedCollectionNotes(filteredNotes);
+            setSelectedCollectionType(collection.type);
             setSelectedCollectionTitle(collection.title);
             setIsNoteListVisible(true);
         }
@@ -129,7 +151,7 @@ export default function CollectionScreen({ onSelectCategory }) {
 
     const closeNoteList = () => {
         setIsNoteListVisible(false);
-        setSelectedCollectionNotes([]);
+        setSelectedCollectionType(null);
         setSelectedCollectionTitle('');
     };
 
@@ -303,9 +325,9 @@ export default function CollectionScreen({ onSelectCategory }) {
                                                     styles.card,
                                                     styles.addCard,
                                                     {
-                                                        backgroundColor: 'transparent',
-                                                        borderColor: themeColors?.border || '#E5E7EB',
-                                                        borderStyle: 'dashed',
+                                                        backgroundColor: themeColors?.card || '#FFFFFF',
+                                                        borderColor: themeColors?.border || '#F3F4F6',
+                                                        borderWidth: 1,
                                                     },
                                                 ]}
                                                 activeOpacity={0.7}
@@ -323,15 +345,18 @@ export default function CollectionScreen({ onSelectCategory }) {
 
                                     if (isSwipeable) {
                                         const handleDelete = () => {
-                                            Alert.alert(
+                                            showAlert(
                                                 "Delete Collection",
                                                 `Are you sure you want to delete "${item.title}"? All notes in this collection will also be deleted.`,
                                                 [
-                                                    { text: "Cancel", style: "cancel" },
+                                                    { text: "Cancel", style: "cancel", onPress: hideAlert },
                                                     {
                                                         text: "Delete",
                                                         style: "destructive",
-                                                        onPress: () => deleteCollection(item.id)
+                                                        onPress: () => {
+                                                            hideAlert();
+                                                            deleteCollection(item.id);
+                                                        }
                                                     }
                                                 ]
                                             );
@@ -468,23 +493,25 @@ export default function CollectionScreen({ onSelectCategory }) {
                     transparent={true}
                     animationType="fade"
                     onRequestClose={() => setIsModalVisible(false)}
+                    statusBarTranslucent={true}
                 >
                     <KeyboardAvoidingView
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         style={styles.modalOverlay}
                     >
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>New Collection</Text>
+                        <View style={[styles.modalContent, { backgroundColor: themeColors.card }]}>
+                            <Text style={[styles.modalTitle, { color: themeColors.text }]}>New Collection</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { backgroundColor: themeColors.inputBackground || themeColors.background, color: themeColors.text, borderColor: themeColors.border, borderWidth: 1 }]}
                                 placeholder="e.g., Recipes, Project X"
+                                placeholderTextColor={themeColors.placeholder || '#9CA3AF'}
                                 value={newCollectionName}
                                 onChangeText={setNewCollectionName}
                                 autoFocus={true}
                             />
                             <View style={styles.modalActions}>
-                                <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.cancelBtn}>
-                                    <Text style={styles.cancelText}>Cancel</Text>
+                                <TouchableOpacity onPress={() => setIsModalVisible(false)} style={[styles.cancelBtn, { backgroundColor: themeColors.border }]}>
+                                    <Text style={[styles.cancelText, { color: themeColors.text }]}>Cancel</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity onPress={handleCreateCollection} style={styles.createBtn}>
                                     <Text style={styles.createText}>Create</Text>
@@ -500,23 +527,25 @@ export default function CollectionScreen({ onSelectCategory }) {
                     transparent={true}
                     animationType="fade"
                     onRequestClose={() => setIsEditModalVisible(false)}
+                    statusBarTranslucent={true}
                 >
                     <KeyboardAvoidingView
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         style={styles.modalOverlay}
                     >
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Edit Collection</Text>
+                        <View style={[styles.modalContent, { backgroundColor: themeColors.card }]}>
+                            <Text style={[styles.modalTitle, { color: themeColors.text }]}>Edit Collection</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { backgroundColor: themeColors.inputBackground || themeColors.background, color: themeColors.text, borderColor: themeColors.border, borderWidth: 1 }]}
                                 placeholder="Collection name"
+                                placeholderTextColor={themeColors.placeholder || '#9CA3AF'}
                                 value={editedName}
                                 onChangeText={setEditedName}
                                 autoFocus={true}
                             />
                             <View style={styles.modalActions}>
-                                <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={styles.cancelBtn}>
-                                    <Text style={styles.cancelText}>Cancel</Text>
+                                <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={[styles.cancelBtn, { backgroundColor: themeColors.border }]}>
+                                    <Text style={[styles.cancelText, { color: themeColors.text }]}>Cancel</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity onPress={handleEditCollection} style={styles.createBtn}>
                                     <Text style={styles.createText}>Save</Text>
@@ -526,7 +555,6 @@ export default function CollectionScreen({ onSelectCategory }) {
                     </KeyboardAvoidingView>
                 </Modal>
 
-                {/* Note Detail Modal - Reusing the component from Home screen */}
                 <MemoDetailModal
                     isVisible={isNoteDetailVisible}
                     onClose={closeNoteDetail}
@@ -535,6 +563,14 @@ export default function CollectionScreen({ onSelectCategory }) {
                     onMemoUpdate={(id, updates) => {
                         updateLog(id, updates); // Update local state
                     }}
+                />
+
+                <CustomAlert
+                    visible={alertVisible}
+                    title={alertConfig.title}
+                    message={alertConfig.message}
+                    buttons={alertConfig.buttons}
+                    onClose={hideAlert}
                 />
             </View>
         </TouchableWithoutFeedback>
