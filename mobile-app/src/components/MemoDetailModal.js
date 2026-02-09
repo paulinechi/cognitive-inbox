@@ -3,24 +3,13 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { View, Text, Modal, TouchableOpacity, Animated, Dimensions, StyleSheet, Image, TextInput, KeyboardAvoidingView, Platform, FlatList, Keyboard, LayoutAnimation, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
-import Constants from 'expo-constants';
+import { API_URL } from '../config/api';
 import Markdown from 'react-native-markdown-display';
 
 const { height } = Dimensions.get('window');
 
 import { useLogs } from '../context/LogContext';
 import { useTheme } from '../context/ThemeContext';
-
-const getApiUrl = () => {
-    const debuggerHost = Constants.expoConfig?.hostUri;
-    if (debuggerHost) {
-        const host = debuggerHost.split(':').shift();
-        return `http://${host}:8000`;
-    }
-    return 'http://localhost:8000';
-};
-
-const API_URL = getApiUrl();
 
 const STANDARD_TYPES = ['Memo', 'Task', 'Wishlist', 'Journal', 'Ideas', 'Other', 'Completed'];
 

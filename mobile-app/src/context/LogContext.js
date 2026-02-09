@@ -1,20 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { API_URL } from '../config/api';
 
 const LogContext = createContext();
 
 export const LogProvider = ({ children }) => {
     const [logs, setLogs] = useState([]);
     const [collections, setCollections] = useState([]);
-
-    const getApiUrl = () => {
-        const Constants = require('expo-constants').default;
-        const debuggerHost = Constants.expoConfig?.hostUri;
-        if (debuggerHost) {
-            const host = debuggerHost.split(':').shift();
-            return `http://${host}:8000`;
-        }
-        return 'http://localhost:8000';
-    };
 
     // Fetch collections from API on mount
     useEffect(() => {
@@ -24,7 +15,7 @@ export const LogProvider = ({ children }) => {
 
     const fetchCollections = async () => {
         try {
-            const response = await fetch(`${getApiUrl()}/collections/`);
+            const response = await fetch(`${API_URL}/collections/`);
             if (response.ok) {
                 const data = await response.json();
                 setCollections(data);
@@ -39,7 +30,7 @@ export const LogProvider = ({ children }) => {
         if (collections.some(c => c.title.toLowerCase() === name.toLowerCase())) return;
 
         try {
-            const response = await fetch(`${getApiUrl()}/collections/?title=${encodeURIComponent(name)}`, {
+            const response = await fetch(`${API_URL}/collections/?title=${encodeURIComponent(name)}`, {
                 method: 'POST',
             });
 
@@ -54,7 +45,7 @@ export const LogProvider = ({ children }) => {
 
     const updateCollection = async (collectionId, newTitle) => {
         try {
-            const response = await fetch(`${getApiUrl()}/collections/${collectionId}?title=${encodeURIComponent(newTitle)}`, {
+            const response = await fetch(`${API_URL}/collections/${collectionId}?title=${encodeURIComponent(newTitle)}`, {
                 method: 'PUT',
             });
 
@@ -73,7 +64,6 @@ export const LogProvider = ({ children }) => {
     };
 
     const addLog = (result, originalInput, mediaUri = null, mediaType = null) => {
-        const apiUrl = getApiUrl();
         const newLog = {
             id: result.id || Date.now().toString(),
             types: result.memo_types || ["Other"],
@@ -84,7 +74,7 @@ export const LogProvider = ({ children }) => {
             action_items: result.action_items,
             tags: result.tags,
             emotional_tone: result.emotional_tone,
-            mediaUri: mediaUri && mediaUri.startsWith('/') ? `${apiUrl}${mediaUri}` : mediaUri,
+            mediaUri: mediaUri && mediaUri.startsWith('/') ? `${API_URL}${mediaUri}` : mediaUri,
             mediaType: mediaType,
         };
         setCollections(prev => {
@@ -111,7 +101,7 @@ export const LogProvider = ({ children }) => {
 
     const deleteLog = async (id) => {
         try {
-            const response = await fetch(`${getApiUrl()}/memos/${id}`, {
+            const response = await fetch(`${API_URL}/memos/${id}`, {
                 method: 'DELETE',
             });
 
@@ -127,7 +117,7 @@ export const LogProvider = ({ children }) => {
 
     const deleteCollection = async (collectionId) => {
         try {
-            const response = await fetch(`${getApiUrl()}/collections/${collectionId}`, {
+            const response = await fetch(`${API_URL}/collections/${collectionId}`, {
                 method: 'DELETE',
             });
 
@@ -157,8 +147,7 @@ export const LogProvider = ({ children }) => {
 
     const fetchLogs = async () => {
         try {
-            const apiUrl = getApiUrl();
-            const response = await fetch(`${apiUrl}/memos/`);
+            const response = await fetch(`${API_URL}/memos/`);
             if (response.ok) {
                 const memos = await response.json();
                 const formattedLogs = memos.map(memo => ({
@@ -170,7 +159,7 @@ export const LogProvider = ({ children }) => {
                     timestamp: memo.updated_at || memo.created_at, // Use latest for timestamp
                     updatedAt: memo.updated_at || memo.created_at,
                     mediaType: memo.media_type,
-                    mediaUri: memo.media_uri ? `${apiUrl}${memo.media_uri}` : null,
+                    mediaUri: memo.media_uri ? `${API_URL}${memo.media_uri}` : null,
                     action_items: memo.action_items,
                     tags: memo.tags,
                     completed_action_items: memo.completed_action_items || [],
