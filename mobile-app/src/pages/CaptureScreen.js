@@ -5,13 +5,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { captureThought } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useLogs } from '../context/LogContext';
-
 import { Toast } from '../components/Toast';
 import { LogItem } from '../components/LogItem';
 import { FilterDropdown } from '../components/FilterDropdown';
 import { VoiceRecorder } from '../components/VoiceRecorder';
 import { CameraCapture } from '../components/CameraCapture';
 import { MemoDetailModal } from '../components/MemoDetailModal';
+import { SearchModal } from '../components/SearchModal';
 import CollectionScreen from './CollectionScreen';
 import SettingScreen from './SettingScreen';
 import { NavigationTab } from '../components/NavigationTab';
@@ -34,7 +34,7 @@ export default function CaptureScreen() {
     const [selectedMemo, setSelectedMemo] = useState(null);
     const [selectedMemoInitialEditMode, setSelectedMemoInitialEditMode] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
-
+    const [isSearchVisible, setIsSearchVisible] = useState(false);
 
     // Lock to prevent double-submission
     const isProcessing = useRef(false);
@@ -123,6 +123,16 @@ export default function CaptureScreen() {
         // Apply Home-specific padding here
         return (
             <View style={[styles.homeContainer, { paddingTop: insets.top + 24 }]}>
+                {/* Header with Search Icon */}
+                <View style={styles.homeHeader}>
+                    <TouchableOpacity
+                        style={[styles.searchButton, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
+                        onPress={() => setIsSearchVisible(true)}
+                    >
+                        <Ionicons name="search" size={20} color={themeColors.text} />
+                    </TouchableOpacity>
+                </View>
+
                 <View style={[styles.inputCard, {
                     backgroundColor: themeColors.card,
                     borderColor: themeColors.border,
@@ -236,6 +246,17 @@ export default function CaptureScreen() {
             >
                 <Toast message={toastMessage} onHide={() => setToastMessage('')} />
 
+                <SearchModal
+                    isVisible={isSearchVisible}
+                    onClose={() => setIsSearchVisible(false)}
+                    logs={logs}
+                    onSelectMemo={(memo) => {
+                        setSelectedMemo(memo);
+                        setSelectedMemoInitialEditMode(false);
+                        setIsModalVisible(true);
+                    }}
+                />
+
                 <MemoDetailModal
                     isVisible={isModalVisible}
                     onClose={() => {
@@ -277,6 +298,24 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: 24,
         // paddingTop is dynamic
+    },
+    homeHeader: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginBottom: 16,
+    },
+    searchButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     textInput: {
         fontSize: 16,
