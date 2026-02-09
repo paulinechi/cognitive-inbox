@@ -204,6 +204,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                 visible={showTagPicker}
                 transparent={true}
                 animationType="fade"
+                statusBarTranslucent={true}
                 onRequestClose={() => setShowTagPicker(false)}
             >
                 <TouchableOpacity
@@ -247,6 +248,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                 visible={importModalVisible}
                 transparent={true}
                 animationType="fade"
+                statusBarTranslucent={true}
                 onRequestClose={() => setImportModalVisible(false)}
             >
                 <TouchableOpacity
@@ -298,6 +300,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                 visible={keepInstructionsVisible}
                 transparent={true}
                 animationType="slide"
+                statusBarTranslucent={true}
                 onRequestClose={() => setKeepInstructionsVisible(false)}
             >
                 <View style={[styles.fullScreenModal, { backgroundColor: themeColors.background }]}>
@@ -308,7 +311,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView style={styles.fullScreenContent} contentContainerStyle={{ paddingBottom: 100 }}>
+                    <ScrollView style={styles.fullScreenContent} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
                         <Text style={[styles.instructionStep, { color: themeColors.text }]}>1. Trigger Export</Text>
                         <Text style={[styles.instructionDesc, { color: themeColors.textSecondary }]}>
                             Go to <Text style={{ color: '#3B82F6', fontWeight: '600' }} onPress={() => WebBrowser.openBrowserAsync('https://takeout.google.com/settings/takeout/custom/keep')}>takeout.google.com</Text>
