@@ -42,6 +42,7 @@ class MemoModel(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     media_type = Column(String, nullable=True)
     media_uri = Column(String, nullable=True)
+    html_content = Column(Text, nullable=True)  # Store Markdown-converted HTML content
 
 class CollectionModel(Base):
     __tablename__ = "collections"
@@ -79,7 +80,6 @@ class Memo(MemoProcessed):
     media_uri: Optional[str] = None
     media_type: Optional[str] = None
     original_memo_type: Optional[str] = None
-
     class Config:
         from_attributes = True
 

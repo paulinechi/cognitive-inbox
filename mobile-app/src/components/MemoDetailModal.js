@@ -4,6 +4,7 @@ import { View, Text, Modal, TouchableOpacity, Animated, Dimensions, StyleSheet, 
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
+import Markdown from 'react-native-markdown-display';
 
 const { height } = Dimensions.get('window');
 

@@ -101,9 +101,34 @@ export const fetchMemos = async () => {
             throw new Error(`Server error: ${response.status}`);
         }
 
-        return await response.json();
     } catch (error) {
         console.error("Fetch memos failed:", error);
         throw new Error(`Failed to fetch memos: ${error.message}`);
+    }
+};
+
+/**
+ * Imports Google Keep notes from a Takeout ZIP file.
+ * 
+ * @param {string} fileUri - URI of the ZIP file
+ * @returns {Promise<Object>} response JSON
+ */
+export const importKeepNotes = async (fileUri) => {
+    try {
+        const uploadResult = await uploadAsync(`${API_URL}/memos/import/keep`, fileUri, {
+            fieldName: 'file',
+            httpMethod: 'POST',
+            uploadType: 1, // FileSystem.FileSystemUploadType.MULTIPART
+            mimeType: 'application/zip',
+        });
+
+        if (uploadResult.status !== 200) {
+            throw new Error(`Server error: ${uploadResult.status} - ${uploadResult.body}`);
+        }
+
+        return JSON.parse(uploadResult.body);
+    } catch (error) {
+        console.error("Import Keep notes failed:", error);
+        throw new Error(`Failed to import notes: ${error.message}`);
     }
 };

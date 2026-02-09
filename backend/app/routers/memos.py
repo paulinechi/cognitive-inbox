@@ -1,17 +1,36 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, Body
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Body, HTTPException
 from sqlalchemy.orm import Session
 import json
 import logging
 from ..database import get_db
 from ..models import Memo
 from ..services.memo_service import MemoService
+from ..services.keep_importer import KeepImporter
 
 router = APIRouter(
     prefix="/memos",
-    tags=["memos"]
+    tags=["memos"],
+    responses={404: {"description": "Not found"}},
 )
 
 logger = logging.getLogger(__name__)
+
+@router.post("/import/keep")
+async def import_keep_notes(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Import Google Keep notes from a Takeout ZIP file.
+    """
+    if not file.filename.endswith('.zip'):
+        raise HTTPException(status_code=400, detail="File must be a ZIP archive")
+        
+    try:
+        result = await KeepImporter.import_takeout_zip(file, db)
+        return {"message": "Import successful", "details": result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Import failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error during import")
 
 @router.post("/capture", response_model=Memo)
 async def capture_thought(
