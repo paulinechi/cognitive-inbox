@@ -72,9 +72,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
+# Routers (support both direct and /api-prefixed paths on Vercel)
 app.include_router(memos.router)
 app.include_router(collections.router)
+app.include_router(memos.router, prefix="/api")
+app.include_router(collections.router, prefix="/api")
 
 @app.get("/")
 def read_root():
@@ -82,3 +84,8 @@ def read_root():
         "message": f"{settings.PROJECT_NAME} is running", 
         "version": settings.VERSION
     }
+
+
+@app.get("/api")
+def read_api_root():
+    return read_root()
