@@ -22,6 +22,16 @@ def load_app_config():
 
 app_config = load_app_config()
 
+DEFAULT_COLLECTIONS_FALLBACK = [
+    "Memo",
+    "Task",
+    "Wishlist",
+    "Journal",
+    "Ideas",
+    "Other",
+    "Completed",
+]
+
 
 def _normalize_database_url(raw_url: str | None) -> str:
     """Normalize DB URL for local and serverless runtimes.
@@ -77,7 +87,7 @@ class Settings(BaseSettings):
     )
 
     # Defaults
-    DEFAULT_COLLECTIONS: List[str] = app_config.get('collections', [])
+    DEFAULT_COLLECTIONS: List[str] = app_config.get('collections', DEFAULT_COLLECTIONS_FALLBACK)
 
     def parsed_backend_cors_origins(self) -> List[str]:
         raw = (self.BACKEND_CORS_ORIGINS or "").strip()
