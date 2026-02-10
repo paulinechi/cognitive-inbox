@@ -13,5 +13,12 @@
       "source": "/:path*",
       "destination": "/"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/api/(.*)/",
+      "destination": "/api/$1",
+      "permanent": false
+    }
   ]
 }
