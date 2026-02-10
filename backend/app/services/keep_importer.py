@@ -16,9 +16,12 @@ import re
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = "uploads"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/tmp/uploads")
+
+
+def ensure_upload_dir() -> str:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    return UPLOAD_DIR
 
 class HTMLToMarkdownConverter(HTMLParser):
     """Simple HTML to Markdown converter for Google Keep notes."""
@@ -191,16 +194,19 @@ class KeepImporter:
                                                 # Define target path
                                                 ext = os.path.splitext(rel_path)[1]
                                                 new_filename = f"{uuid.uuid4()}{ext}"
-                                                target_path = os.path.join(UPLOAD_DIR, new_filename)
+                                                target_path = os.path.join(ensure_upload_dir(), new_filename)
                                                 
                                                 # Extract and save
-                                                with z.open(full_zip_path) as source, open(target_path, "wb") as target:
-                                                    shutil.copyfileobj(source, target)
-                                                
-                                                # Set URI (relative path for static serving)
-                                                media_uri = f"/uploads/{new_filename}"
-                                                media_type = att.get('mimetype')
-                                                break # Only take the first image for now
+                                                try:
+                                                    with z.open(full_zip_path) as source, open(target_path, "wb") as target:
+                                                        shutil.copyfileobj(source, target)
+
+                                                    # Set URI (relative path for static serving)
+                                                    media_uri = f"/uploads/{new_filename}"
+                                                    media_type = att.get('mimetype')
+                                                    break # Only take the first image for now
+                                                except OSError as e:
+                                                    logger.warning(f"Could not persist attachment {full_zip_path}: {e}")
 
                             # Combine title and text for query
                             full_text = f"{title}\n{text_content}".strip()
