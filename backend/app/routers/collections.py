@@ -9,13 +9,14 @@ from ..models import Collection, CollectionModel
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 
+@router.get("", response_model=List[Collection])
 @router.get("/", response_model=List[Collection])
 def get_collections(db: Session = Depends(get_db)):
     """Get all collections"""
     collections = db.query(CollectionModel).all()
     return collections
 
-
+@router.post("", response_model=Collection)
 @router.post("/", response_model=Collection)
 def create_collection(title: str, db: Session = Depends(get_db)):
     """Create a new custom collection"""
