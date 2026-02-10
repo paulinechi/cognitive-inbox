@@ -9,6 +9,9 @@
       "source": "/api/:path*",
       "destination": "https://cognitive-inbox-kz8e.vercel.app/:path*"
     },
-    { "source": "/:path*", "destination": "/" }
+    {
+      "source": "/:path*",
+      "destination": "/"
+    }
   ]
 }
