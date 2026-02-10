@@ -1,8 +1,16 @@
 import logging
-import google.generativeai as genai
+import warnings
 import json
 import typing_extensions as typing
 from app.models import MemoProcessed, MemoType
+
+warnings.filterwarnings(
+    "ignore",
+    message=r"(?s).*google\.generativeai.*",
+    category=FutureWarning,
+)
+
+import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 

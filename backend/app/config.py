@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 import os
 from functools import lru_cache
 import yaml
@@ -22,13 +23,46 @@ def load_app_config():
 app_config = load_app_config()
 
 
+def _normalize_database_url(raw_url: str | None) -> str:
+    """Normalize DB URL for local and serverless runtimes.
+
+    - keep non-sqlite URLs unchanged
+    - for sqlite relative paths on Vercel, move DB file into `/tmp`
+      to avoid read-only app filesystem errors.
+    """
+    url = (raw_url or "").strip() or "sqlite:///./cognitive_inbox.db"
+
+    if not url.startswith("sqlite"):
+        return url
+
+    is_vercel = os.getenv("VERCEL") == "1" or os.getenv("VERCEL_ENV") is not None
+    if not is_vercel:
+        return url
+
+    if url.startswith("sqlite:///./"):
+        filename = os.path.basename(url[len("sqlite:///./"):]) or "cognitive_inbox.db"
+        return f"sqlite:////tmp/{filename}"
+
+    if url.startswith("sqlite:///") and not url.startswith("sqlite:////"):
+        filename = os.path.basename(url[len("sqlite:///"):]) or "cognitive_inbox.db"
+        return f"sqlite:////tmp/{filename}"
+
+    return url
+
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Cognitive Inbox API"
     VERSION: str = "0.1.0"
     API_V1_STR: str = ""
 
     # Database
-    DATABASE_URL: str = app_config.get('database_url', "sqlite:///./cognitive_inbox.db")
+    DATABASE_URL: str = _normalize_database_url(app_config.get('database_url', "sqlite:///./cognitive_inbox.db"))
+
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value):
+        return _normalize_database_url(str(value) if value is not None else None)
 
     # AI
     GOOGLE_API_KEY: str | None = None
