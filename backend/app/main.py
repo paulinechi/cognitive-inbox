@@ -57,15 +57,16 @@ app = FastAPI(
 )
 
 mimetypes.add_type('audio/mp4', '.m4a')
-UPLOAD_DIR = "uploads"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
-
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/tmp/uploads")
+try:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+except OSError as e:
+    logger.warning(f"Uploads directory unavailable; /uploads static route disabled: {e}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=settings.parsed_backend_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
