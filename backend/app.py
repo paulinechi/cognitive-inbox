@@ -1,12 +1,14 @@
 """Vercel entrypoint for FastAPI backend.
 
-Some Vercel Python bootstraps execute this file as module name ``app``. In that mode,
-plain file-loading ``app/main.py`` can lose package context and break relative imports
-inside ``app/main.py`` (e.g. ``from .config import get_settings``).
+Why this bootstrap exists:
+- Vercel can load `/var/task/app.py` as module name `app`.
+- A naive `from app.main import app` can resolve incorrectly because this file may
+  shadow the `app/` package.
+- Loading `app/main.py` without package context breaks relative imports such as
+  `from .config import get_settings`.
 
-This bootstrap guarantees package context by:
-1) registering this module as package ``app`` (via ``__path__``), and
-2) loading ``app/main.py`` under module name ``app.main``.
+This implementation makes the current module package-like (`__path__`) and then
+loads `app/main.py` specifically as module `app.main`.
 """
 
 from importlib.util import module_from_spec, spec_from_file_location
