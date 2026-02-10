@@ -174,3 +174,26 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 cd mobile-app
 npx expo start
 ```
+
+## Vercel API Proxy Routing (No CORS)
+
+For web builds, the frontend now calls same-origin `/api` (`mobile-app/src/config/api.js`) and Vercel rewrites that path to the backend preview deployment (`mobile-app/vercel.json`).
+
+This keeps backend logic unchanged and avoids browser CORS issues:
+- Frontend calls same origin (`/api/...`)
+- Vercel proxies to backend (`https://cognitive-inbox-kz8e.vercel.app/...`)
+- No direct browser call to cross-origin backend URL
+
+### Deploy the routing change
+
+Redeploy the frontend project on Vercel so rewrites are applied:
+
+```bash
+cd mobile-app
+vercel --prod
+```
+
+### Notes
+
+- Native app behavior is unchanged: it still uses `EXPO_PUBLIC_API_URL` when set, then local-host fallbacks for development.
+- If backend preview URL changes, update the `/api/:path*` rewrite destination in `mobile-app/vercel.json`.
