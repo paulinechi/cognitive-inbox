@@ -5,6 +5,20 @@
   "cleanUrls": true,
   "framework": null,
   "rewrites": [
-    { "source": "/:path*", "destination": "/" }
+    {
+      "source": "/api/:path*",
+      "destination": "https://cognitive-inbox-kz8e.vercel.app/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/api/(.*)/",
+      "destination": "/api/$1",
+      "permanent": false
+    }
   ]
 }
