@@ -12,14 +12,18 @@ import os
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = "uploads"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/tmp/uploads")
+
+
+def ensure_upload_dir() -> str:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    return UPLOAD_DIR
+
 
 def save_upload_file(file: UploadFile) -> str:
     file_ext = file.filename.split('.')[-1] if '.' in file.filename else "bin"
     safe_filename = f"{uuid.uuid4()}.{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, safe_filename)
+    file_path = os.path.join(ensure_upload_dir(), safe_filename)
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -57,9 +61,14 @@ class MemoService:
         if file:
             # We need to reset file cursor because we read it above
             await file.seek(0)
-            media_uri = save_upload_file(file)
-            media_type_db = mime_type
-            logger.info(f"FILE - Saved to disk: {media_uri}")
+            try:
+                media_uri = save_upload_file(file)
+                media_type_db = mime_type
+                logger.info(f"FILE - Saved to disk: {media_uri}")
+            except OSError as e:
+                logger.warning(f"FILE - Could not save upload to disk: {e}")
+                media_uri = None
+                media_type_db = mime_type
 
         logger.info("AI - Sending content to Gemini for analysis...")
         processed_data = analyze_content(
