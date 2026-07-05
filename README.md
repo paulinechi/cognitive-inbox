@@ -17,14 +17,18 @@ Cognitive Inbox is an intelligent application designed to capture, analyze, and 
 
 ## AI Models Used
 
-This application leverages powerful AI models to process and understand your inputs:
+This application leverages Google Gemini (via the `google-genai` SDK, default model `gemini-flash-lite-latest`, configurable in `backend/application.yaml`):
 
-- **Google Gemini 2.0 Flash**: 
-  - Used for analyzing text, images, and transcribed audio.
-  - Performs categorization (Idea, Task, Wishlist, etc.), summarization, tagging, and sentiment analysis.
-  
-- **OpenAI Whisper**: 
-  - Used for accurate speech-to-text transcription of audio notes.
+- Analyzes text and images, and transcribes + analyzes audio notes directly (no separate speech-to-text service).
+- Performs categorization (Idea, Task, Wishlist, etc.), summarization, tagging, action-item extraction, and sentiment analysis.
+
+## Authentication
+
+The API requires an account. Register or sign in from the app's auth screen; the backend issues a JWT (30-day expiry by default) and all memos/collections are scoped per user.
+
+- `POST /auth/register` / `POST /auth/login` with `{"email", "password"}` return `{"access_token", "user"}`.
+- All other endpoints require an `Authorization: Bearer <token>` header.
+- Set `SECRET_KEY` in `backend/.env` (see `.env.example`) — without it tokens are signed with an ephemeral key and become invalid on every restart.
 
 ## How to Run
 
@@ -48,7 +52,7 @@ cd backend
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-# Ensure you have a .env file with GOOGLE_API_KEY
+# Ensure you have a .env file with GOOGLE_API_KEY and SECRET_KEY (see .env.example)
 cd ..
 ```
 
@@ -197,3 +201,27 @@ vercel --prod
 
 - Native app behavior is unchanged: it still uses `EXPO_PUBLIC_API_URL` when set, then local-host fallbacks for development.
 - If backend preview URL changes, update the `/api/:path*` rewrite destination in `mobile-app/vercel.json`.
+
+## Running Tests
+
+Backend smoke tests (auth, capture with mocked Gemini, per-user isolation, upload validation):
+
+```bash
+cd backend
+./venv/bin/python -m pytest tests/ -q
+```
+
+## Building for the App Store (iOS)
+
+The app is configured with bundle ID `com.paulinechi.cognitiveinbox` and EAS build profiles in `mobile-app/eas.json`.
+
+1. One-time setup: an [Apple Developer account](https://developer.apple.com) ($99/yr) and `npm install -g eas-cli && eas login`.
+2. Point production builds at your backend: the `EXPO_PUBLIC_API_URL` env in `eas.json` (currently the Vercel backend).
+3. Build and submit:
+   ```bash
+   cd mobile-app
+   eas build --platform ios --profile production
+   eas submit --platform ios
+   ```
+
+Before a public release you still need: a persistent production database (SQLite on Vercel lives in `/tmp` and is wiped on cold starts — use hosted Postgres via `DATABASE_URL`), durable media storage for uploads, a `SECRET_KEY` env var on the backend, a privacy policy URL, and App Store privacy labels (mic/camera/photos; content is processed by Google Gemini).
