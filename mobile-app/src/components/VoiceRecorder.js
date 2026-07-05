@@ -1,33 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { Audio } from 'expo-av';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+    useAudioRecorder,
+    RecordingPresets,
+    AudioModule,
+    setAudioModeAsync,
+} from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 
 export const VoiceRecorder = ({ onRecordingComplete, isProcessing }) => {
-    const [recording, setRecording] = useState(null);
-    const [permissionResponse, requestPermission] = Audio.usePermissions();
+    const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
     const [isRecording, setIsRecording] = useState(false);
 
     async function startRecording() {
         try {
-            if (permissionResponse.status !== 'granted') {
-                console.log('Requesting permission..');
-                await requestPermission();
+            const permission = await AudioModule.requestRecordingPermissionsAsync();
+            if (!permission.granted) {
+                console.log('Microphone permission not granted');
+                return;
             }
 
-            await Audio.setAudioModeAsync({
-                allowsRecordingIOS: true,
-                playsInSilentModeIOS: true,
-                staysActiveInBackground: true,
-                shouldDuckAndroid: true,
-                playThroughEarpieceAndroid: false,
+            await setAudioModeAsync({
+                allowsRecording: true,
+                playsInSilentMode: true,
             });
 
             console.log('Starting recording..');
-            const { recording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
-            );
-            setRecording(recording);
+            await recorder.prepareToRecordAsync();
+            recorder.record();
             setIsRecording(true);
             console.log('Recording started');
         } catch (err) {
@@ -38,13 +38,17 @@ export const VoiceRecorder = ({ onRecordingComplete, isProcessing }) => {
     async function stopRecording() {
         console.log('Stopping recording..');
         setIsRecording(false);
-        setRecording(undefined);
-        await recording.stopAndUnloadAsync();
+        await recorder.stop();
 
-        const uri = recording.getURI();
+        await setAudioModeAsync({
+            allowsRecording: false,
+            playsInSilentMode: true,
+        });
+
+        const uri = recorder.uri;
         console.log('Recording stopped and stored at', uri);
 
-        if (onRecordingComplete) {
+        if (onRecordingComplete && uri) {
             onRecordingComplete(uri);
         }
     }
@@ -52,7 +56,7 @@ export const VoiceRecorder = ({ onRecordingComplete, isProcessing }) => {
     const handlePress = () => {
         if (isProcessing) return;
 
-        if (recording) {
+        if (isRecording) {
             stopRecording();
         } else {
             startRecording();
