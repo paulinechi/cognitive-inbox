@@ -2,20 +2,23 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { View, Text, Modal, TouchableOpacity, Animated, Dimensions, StyleSheet, Image, TextInput, KeyboardAvoidingView, Platform, FlatList, Keyboard, LayoutAnimation, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { API_URL } from '../config/api';
+import { authFetch } from '../services/http';
 import Markdown from 'react-native-markdown-display';
 
 const { height } = Dimensions.get('window');
 
 import { useLogs } from '../context/LogContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLocale } from '../context/LocaleContext';
 
 const STANDARD_TYPES = ['Memo', 'Task', 'Wishlist', 'Journal', 'Ideas', 'Other', 'Completed'];
 
 export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initialEditMode = false }) => {
     const { collections } = useLogs();
     const { colors: themeColors } = useTheme();
+    const { tc } = useLocale();
     const slideAnim = useRef(new Animated.Value(height)).current;
 
     const dynamicStyles = useMemo(() => StyleSheet.create({
@@ -98,7 +101,7 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
         } else {
             slideAnim.setValue(height);
             if (sound) {
-                sound.unloadAsync();
+                sound.remove();
                 setSound(null);
                 setIsPlaying(false);
             }
@@ -112,7 +115,7 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
     }, [isVisible, initialEditMode]);
 
     useEffect(() => {
-        return sound ? () => { sound.unloadAsync(); } : undefined;
+        return sound ? () => { sound.remove(); } : undefined;
     }, [sound]);
 
     const handleClose = () => {
@@ -173,7 +176,7 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
                 completed_action_items: completedItems,
             };
 
-            const response = await fetch(`${API_URL}/memos/${memo.id}`, {
+            const response = await authFetch(`${API_URL}/memos/${memo.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -218,7 +221,7 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
         if (!isEditing) {
             // Immediate API toggle for View Mode
             try {
-                const response = await fetch(`${API_URL}/memos/${memo.id}/toggle-action/${index}`, { method: 'PATCH' });
+                const response = await authFetch(`${API_URL}/memos/${memo.id}/toggle-action/${index}`, { method: 'PATCH' });
                 if (response.ok) {
                     const result = await response.json();
                     setCompletedItems(result.completed_action_items);
@@ -318,32 +321,28 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
         try {
             if (sound) {
                 if (isPlaying) {
-                    await sound.pauseAsync();
+                    sound.pause();
                     setIsPlaying(false);
                 } else {
-                    await Audio.setAudioModeAsync({
-                        allowsRecordingIOS: false,
-                        playsInSilentModeIOS: true,
-                        shouldDuckAndroid: true,
-                        staysActiveInBackground: false,
+                    await setAudioModeAsync({
+                        allowsRecording: false,
+                        playsInSilentMode: true,
                     });
-                    await sound.playAsync();
+                    sound.play();
                     setIsPlaying(true);
                 }
             } else {
                 setIsLoadingAudio(true);
-                await Audio.setAudioModeAsync({
-                    allowsRecordingIOS: false,
-                    playsInSilentModeIOS: true,
-                    shouldDuckAndroid: true,
-                    staysActiveInBackground: false,
+                await setAudioModeAsync({
+                    allowsRecording: false,
+                    playsInSilentMode: true,
                 });
-                const { sound: newSound } = await Audio.Sound.createAsync(
-                    { uri: memo.mediaUri },
-                    { shouldPlay: true },
-                    (status) => { if (status.didJustFinish) setIsPlaying(false); }
-                );
-                setSound(newSound);
+                const player = createAudioPlayer({ uri: memo.mediaUri });
+                player.addListener('playbackStatusUpdate', (status) => {
+                    if (status.didJustFinish) setIsPlaying(false);
+                });
+                player.play();
+                setSound(player);
                 setIsPlaying(true);
                 setIsLoadingAudio(false);
             }
@@ -382,7 +381,7 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
                                         onPress={() => isEditing && setShowTypeSelector(prev => !prev)}
                                         disabled={!isEditing}
                                     >
-                                        <Text style={styles.typeBadgeText}>{type}</Text>
+                                        <Text style={styles.typeBadgeText}>{tc(type)}</Text>
                                         {isEditing && <Ionicons name="caret-down" size={12} color="#FFFFFF" style={{ marginLeft: 4 }} />}
                                     </TouchableOpacity>
                                 ))}
@@ -409,7 +408,7 @@ export const MemoDetailModal = ({ isVisible, onClose, memo, onMemoUpdate, initia
                                                     styles.selectorItemText,
                                                     dynamicStyles.text,
                                                     types.includes(item) && [styles.selectorItemTextSelected, dynamicStyles.text]
-                                                ]}>{item}</Text>
+                                                ]}>{tc(item)}</Text>
                                                 {types.includes(item) && <Ionicons name="checkmark" size={16} color={themeColors.text} />}
                                             </TouchableOpacity>
                                         )}

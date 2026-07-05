@@ -1,13 +1,6 @@
 import { API_URL } from '../config/api';
-
-/**
- * Captures a thought (text, audio, or image) and sends it to the backend for processing.
- * 
- * @param {string | Object} input - Either a text string or an object with {type, uri}
- * @param {string[]} tags - Available custom tags for categorization
- * @returns {Promise<Object>} Processed memo object
- * @throws {Error} If the request fails or input is invalid
- */
+import { authFetch, authHeaders } from './http';
+import { getCurrentLanguage } from '../i18n/current';
 import { uploadAsync } from 'expo-file-system/legacy';
 
 /**
@@ -24,9 +17,10 @@ export const captureThought = async (input, tags = []) => {
         if (typeof input === 'string') {
             const formData = new FormData();
             formData.append('available_tags', JSON.stringify(tags));
+            formData.append('preferred_language', getCurrentLanguage());
             formData.append('text', input);
 
-            const response = await fetch(`${API_URL}/memos/capture`, {
+            const response = await authFetch(`${API_URL}/memos/capture`, {
                 method: 'POST',
                 body: formData,
             });
@@ -49,8 +43,10 @@ export const captureThought = async (input, tags = []) => {
                 httpMethod: 'POST',
                 uploadType: 1, // FileSystem.FileSystemUploadType.MULTIPART = 1
                 mimeType: fileType,
+                headers: authHeaders(),
                 parameters: {
-                    'available_tags': JSON.stringify(tags)
+                    'available_tags': JSON.stringify(tags),
+                    'preferred_language': getCurrentLanguage()
                 }
             });
 
@@ -104,6 +100,7 @@ export const importKeepNotes = async (fileUri) => {
             httpMethod: 'POST',
             uploadType: 1, // FileSystem.FileSystemUploadType.MULTIPART
             mimeType: 'application/zip',
+            headers: authHeaders(),
         });
 
         if (uploadResult.status !== 200) {

@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { API_URL } from '../config/api';
+import { authFetch } from '../services/http';
 
 const LogContext = createContext();
 
@@ -15,7 +16,7 @@ export const LogProvider = ({ children }) => {
 
     const fetchCollections = async () => {
         try {
-            const response = await fetch(`${API_URL}/collections/`);
+            const response = await authFetch(`${API_URL}/collections/`);
             if (response.ok) {
                 const data = await response.json();
                 setCollections(data);
@@ -30,7 +31,7 @@ export const LogProvider = ({ children }) => {
         if (collections.some(c => c.title.toLowerCase() === name.toLowerCase())) return;
 
         try {
-            const response = await fetch(`${API_URL}/collections/?title=${encodeURIComponent(name)}`, {
+            const response = await authFetch(`${API_URL}/collections/?title=${encodeURIComponent(name)}`, {
                 method: 'POST',
             });
 
@@ -45,7 +46,7 @@ export const LogProvider = ({ children }) => {
 
     const updateCollection = async (collectionId, newTitle) => {
         try {
-            const response = await fetch(`${API_URL}/collections/${collectionId}?title=${encodeURIComponent(newTitle)}`, {
+            const response = await authFetch(`${API_URL}/collections/${collectionId}?title=${encodeURIComponent(newTitle)}`, {
                 method: 'PUT',
             });
 
@@ -101,7 +102,7 @@ export const LogProvider = ({ children }) => {
 
     const deleteLog = async (id) => {
         try {
-            const response = await fetch(`${API_URL}/memos/${id}`, {
+            const response = await authFetch(`${API_URL}/memos/${id}`, {
                 method: 'DELETE',
             });
 
@@ -117,7 +118,7 @@ export const LogProvider = ({ children }) => {
 
     const deleteCollection = async (collectionId) => {
         try {
-            const response = await fetch(`${API_URL}/collections/${collectionId}`, {
+            const response = await authFetch(`${API_URL}/collections/${collectionId}`, {
                 method: 'DELETE',
             });
 
@@ -147,7 +148,7 @@ export const LogProvider = ({ children }) => {
 
     const fetchLogs = async () => {
         try {
-            const response = await fetch(`${API_URL}/memos/`);
+            const response = await authFetch(`${API_URL}/memos/`);
             if (response.ok) {
                 const memos = await response.json();
                 const formattedLogs = memos.map(memo => ({
