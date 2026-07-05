@@ -24,10 +24,19 @@ class MemoType(str, Enum):
                 return member
         return cls.OTHER
 
+class UserModel(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(String)
+
 class MemoModel(Base):
     __tablename__ = "memos"
 
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     original_input = Column(String)
     extracted_text = Column(String, nullable=True)
     summary = Column(String)
@@ -46,8 +55,9 @@ class MemoModel(Base):
 
 class CollectionModel(Base):
     __tablename__ = "collections"
-    
+
     id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=True)
     title = Column(String, nullable=False)
     type = Column(String, nullable=False)
     is_custom = Column(Boolean, default=False)
@@ -92,3 +102,20 @@ class Collection(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Auth schemas
+class UserCredentials(BaseModel):
+    email: str = Field(..., min_length=3, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    password: str = Field(..., min_length=8, max_length=72)
+
+class UserOut(BaseModel):
+    id: str
+    email: str
+
+    class Config:
+        from_attributes = True
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut

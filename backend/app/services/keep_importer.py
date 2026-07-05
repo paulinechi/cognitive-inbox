@@ -74,7 +74,7 @@ class KeepImporter:
         return converter.get_markdown()
     
     @staticmethod
-    async def import_html_file(html_file: UploadFile, db: Session) -> Dict[str, Any]:
+    async def import_html_file(html_file: UploadFile, db: Session, user_id: str) -> Dict[str, Any]:
         """
         Import a single Google Keep HTML file.
         """
@@ -99,8 +99,11 @@ class KeepImporter:
             from ..models import CollectionModel
             
             # Get available tags from collections
-            available_tags = [c.title for c in db.query(CollectionModel).all()]
-            
+            available_tags = [
+                c.title
+                for c in db.query(CollectionModel).filter(CollectionModel.user_id == user_id).all()
+            ]
+
             # Process with AI
             logger.info(f"Processing HTML note with AI: {title[:50]}")
             processed_data = analyze_content(
@@ -113,6 +116,7 @@ class KeepImporter:
             # Create memo
             new_memo = MemoModel(
                 id=str(uuid.uuid4()),
+                user_id=user_id,
                 original_input=plain_text,
                 summary=processed_data.summary,
                 extracted_text=processed_data.extracted_text,
@@ -140,7 +144,7 @@ class KeepImporter:
             raise ValueError(f"Failed to import HTML file: {str(e)}")
 
     @staticmethod
-    async def import_takeout_zip(zip_file: UploadFile, db: Session) -> Dict[str, Any]:
+    async def import_takeout_zip(zip_file: UploadFile, db: Session, user_id: str) -> Dict[str, Any]:
         """
         Parses a Google Takeout ZIP file and imports notes.
         """
@@ -226,7 +230,10 @@ class KeepImporter:
                             from ..models import CollectionModel
                             
                             # Get available tags from collections
-                            available_tags = [c.title for c in db.query(CollectionModel).all()]
+                            available_tags = [
+                                c.title
+                                for c in db.query(CollectionModel).filter(CollectionModel.user_id == user_id).all()
+                            ]
                             
                             # Process with AI
                             logger.info(f"Processing note with AI: {title[:50] if title else 'Untitled'}")
@@ -239,6 +246,7 @@ class KeepImporter:
                             
                             new_memo = MemoModel(
                                 id=str(uuid.uuid4()),
+                                user_id=user_id,
                                 original_input=processed_data.original_input,
                                 summary=processed_data.summary,
                                 extracted_text=processed_data.extracted_text,

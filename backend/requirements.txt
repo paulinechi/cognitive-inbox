@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-google-generativeai
+google-genai
 python-multipart
 sqlalchemy
 pydantic
@@ -8,3 +8,6 @@ pydantic-settings
 python-dotenv
 PyYAML
 typing-extensions
+PyJWT
+bcrypt
+psycopg2-binary

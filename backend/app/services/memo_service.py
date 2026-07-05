@@ -30,16 +30,37 @@ def save_upload_file(file: UploadFile) -> str:
         
     return f"/uploads/{safe_filename}"
 
+ALLOWED_UPLOAD_MIME_PREFIXES = ("audio/", "image/")
+
+
+def validate_upload(mime_type: str | None, file_bytes: bytes) -> None:
+    from ..config import get_settings
+    settings = get_settings()
+    max_bytes = settings.MAX_UPLOAD_MB * 1024 * 1024
+    if len(file_bytes) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large (max {settings.MAX_UPLOAD_MB}MB)",
+        )
+    if not (mime_type or "").startswith(ALLOWED_UPLOAD_MIME_PREFIXES):
+        raise HTTPException(
+            status_code=415,
+            detail="Unsupported file type; only audio and image uploads are accepted",
+        )
+
+
 class MemoService:
     @staticmethod
     async def process_entry(
         db: Session,
         text: str | None,
         file: UploadFile | None,
-        available_tags: list[str]
+        available_tags: list[str],
+        user_id: str,
+        preferred_language: str | None = None
     ) -> Memo:
         logger.info("START - note submission")
-        
+
         if not text and not file:
              logger.error("ERROR - Submission failed: No input provided")
              raise HTTPException(status_code=400, detail="Input (text or file) is empty")
@@ -50,7 +71,8 @@ class MemoService:
             file_bytes = await file.read()
             mime_type = file.content_type
             logger.info(f"FILE - uploaded: {file.filename}, MIME type: {mime_type}, Size: {len(file_bytes)} bytes")
-            
+            validate_upload(mime_type, file_bytes)
+
             if mime_type and "audio" in mime_type:
                 logger.info("AUDIO - Skipping local transcription; Gemini will transcribe.")
                 
@@ -72,16 +94,18 @@ class MemoService:
 
         logger.info("AI - Sending content to Gemini for analysis...")
         processed_data = analyze_content(
-            text_input=text, 
-            file_data=file_bytes, 
+            text_input=text,
+            file_data=file_bytes,
             mime_type=mime_type,
-            available_tags=available_tags
+            available_tags=available_tags,
+            preferred_language=preferred_language
         )
         
         new_id = str(uuid.uuid4())
         
         db_memo = MemoModel(
             id=new_id,
+            user_id=user_id,
             original_input=processed_data.original_input,
             extracted_text=processed_data.extracted_text,
             memo_types=json.dumps([t.value if hasattr(t, 'value') else t for t in processed_data.memo_types]),
@@ -122,8 +146,13 @@ class MemoService:
         )
 
     @staticmethod
-    def get_all_memos(db: Session) -> list[Memo]:
-        memos = db.query(MemoModel).order_by(MemoModel.created_at.desc()).all()
+    def get_all_memos(db: Session, user_id: str) -> list[Memo]:
+        memos = (
+            db.query(MemoModel)
+            .filter(MemoModel.user_id == user_id)
+            .order_by(MemoModel.created_at.desc())
+            .all()
+        )
         return [
             Memo(
                 id=memo.id,
@@ -147,15 +176,15 @@ class MemoService:
         ]
 
     @staticmethod
-    def toggle_action_item(db: Session, memo_id: str, action_index: int):
+    def toggle_action_item(db: Session, memo_id: str, action_index: int, user_id: str):
         """
         Toggle completion status of an action item.
         Automatically adds 'Completed' as a MemoType when all actions are done,
         removes it when any action becomes incomplete.
         """
         from ..models import MemoType
-        
-        memo = db.query(MemoModel).filter(MemoModel.id == memo_id).first()
+
+        memo = db.query(MemoModel).filter(MemoModel.id == memo_id, MemoModel.user_id == user_id).first()
         if not memo:
             raise HTTPException(status_code=404, detail="Memo not found")
         
@@ -208,8 +237,8 @@ class MemoService:
         }
 
     @staticmethod
-    def delete_memo(db: Session, memo_id: str):
-        memo = db.query(MemoModel).filter(MemoModel.id == memo_id).first()
+    def delete_memo(db: Session, memo_id: str, user_id: str):
+        memo = db.query(MemoModel).filter(MemoModel.id == memo_id, MemoModel.user_id == user_id).first()
         if not memo:
             raise HTTPException(status_code=404, detail="Memo not found")
         
@@ -218,8 +247,8 @@ class MemoService:
         return {"ok": True}
 
     @staticmethod
-    def update_memo(db: Session, memo_id: str, updates: dict):
-        memo = db.query(MemoModel).filter(MemoModel.id == memo_id).first()
+    def update_memo(db: Session, memo_id: str, updates: dict, user_id: str):
+        memo = db.query(MemoModel).filter(MemoModel.id == memo_id, MemoModel.user_id == user_id).first()
         if not memo:
             raise HTTPException(status_code=404, detail="Memo not found")
         

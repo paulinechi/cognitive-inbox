@@ -5,13 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 import os
 import mimetypes
+from sqlalchemy import inspect, text
 from .config import get_settings
 from .database import engine, Base
-from .routers import memos, collections
-from .database import SessionLocal
-from .models import CollectionModel
-import uuid
-from datetime import datetime
+from .routers import memos, collections, auth
 
 settings = get_settings()
 logging.basicConfig(
@@ -23,30 +20,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def run_schema_migrations():
+    """Add columns introduced after initial release (no Alembic yet)."""
+    inspector = inspect(engine)
+    added = []
+    with engine.begin() as conn:
+        for table in ("memos", "collections"):
+            if table not in inspector.get_table_names():
+                continue
+            columns = {col["name"] for col in inspector.get_columns(table)}
+            if "user_id" not in columns:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN user_id VARCHAR"))
+                added.append(f"{table}.user_id")
+    if added:
+        logger.info(f"Schema migration - added columns: {', '.join(added)}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Startup - Verifying database schema...")
     Base.metadata.create_all(bind=engine)
-    
-    db = SessionLocal()
     try:
-        if db.query(CollectionModel).count() == 0:
-            logger.info("Seeding default collections...")
-            default_collections = settings.DEFAULT_COLLECTIONS
-            for title in default_collections:
-                db.add(CollectionModel(
-                    id=str(uuid.uuid4()),
-                    title=title, 
-                    type=title, 
-                    is_custom=False,
-                    created_at=datetime.utcnow().isoformat()
-                ))
-            db.commit()
+        run_schema_migrations()
     except Exception as e:
-        logger.error(f"Error seeding collections: {e}")
-    finally:
-        db.close()
-        
+        logger.error(f"Schema migration failed: {e}")
+
+    # Default collections are seeded per-user at registration (see routers/auth.py)
     yield
     logger.info("Shutdown - Cleaning up resources...")
 
@@ -64,17 +63,21 @@ try:
 except OSError as e:
     logger.warning(f"Uploads directory unavailable; /uploads static route disabled: {e}")
 
+# Auth uses bearer tokens in the Authorization header, not cookies, so
+# credentials support is unnecessary (and invalid in combination with "*").
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.parsed_backend_cors_origins(),
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Routers (support both direct and /api-prefixed paths on Vercel)
+app.include_router(auth.router)
 app.include_router(memos.router)
 app.include_router(collections.router)
+app.include_router(auth.router, prefix="/api")
 app.include_router(memos.router, prefix="/api")
 app.include_router(collections.router, prefix="/api")
 
