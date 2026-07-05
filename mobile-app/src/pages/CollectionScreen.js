@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { useTheme } from '../context/ThemeContext';
+import { useLocale } from '../context/LocaleContext';
 import { useLogs } from '../context/LogContext';
 import { MemoDetailModal } from '../components/MemoDetailModal';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ import CustomAlert from '../components/CustomAlert';
 
 export default function CollectionScreen({ onSelectCategory }) {
     const { colors: themeColors } = useTheme();
+    const { t, tc } = useLocale();
     const { logs, collections, addCollection, updateCollection, deleteCollection, updateLog } = useLogs();
 
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -262,7 +264,7 @@ export default function CollectionScreen({ onSelectCategory }) {
                                                         {note.summary || note.originalInput || "No content"}
                                                     </Text>
                                                     <Text style={styles.noteRowMeta}>
-                                                        {note.type}
+                                                        {tc(note.type)}
                                                     </Text>
                                                 </View>
                                                 <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
@@ -449,9 +451,9 @@ export default function CollectionScreen({ onSelectCategory }) {
                                                             </View>
                                                         )}
                                                         <View style={styles.cardContent}>
-                                                            <Text style={[styles.cardTitle, { color: themeColors?.text }]}>{item.title}</Text>
+                                                            <Text style={[styles.cardTitle, { color: themeColors?.text }]}>{tc(item.title)}</Text>
                                                             <Text style={styles.cardCount}>
-                                                                {counts[item.type] || 0} notes
+                                                                {t('notesCount', counts[item.type] || 0)}
                                                             </Text>
                                                         </View>
                                                     </TouchableOpacity>

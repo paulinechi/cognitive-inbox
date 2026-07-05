@@ -1,0 +1,112 @@
+export const translations = {
+    en: {
+        // Auth
+        welcomeBack: 'Welcome back',
+        createAccount: 'Create your account',
+        email: 'Email',
+        password: 'Password',
+        signIn: 'Sign In',
+        signUp: 'Sign Up',
+        signOut: 'Sign Out',
+        noAccountYet: "Don't have an account? ",
+        alreadyHaveAccount: 'Already have an account? ',
+        enterEmailPassword: 'Please enter your email and password.',
+        passwordTooShort: 'Password must be at least 8 characters.',
+
+        // Navigation
+        home: 'Home',
+        collection: 'Collection',
+        settings: 'Settings',
+
+        // Capture
+        capturePlaceholder: 'Write, speak, or drop anything here...',
+        emptyStateTitle: 'Your thoughts will appear here',
+        emptyStateSubtitle: 'Start typing above to capture your first thought',
+        emptyFilterTitle: (filter) => `No ${filter}s yet`,
+        emptyFilterSubtitle: 'Try categorizing some notes to see them here',
+
+        // Settings
+        navigation: 'Navigation',
+        activeCollection: 'Active Collection',
+        setDefaultLanding: 'Set default landing page',
+        preferences: 'Preferences',
+        darkMode: 'Dark Mode',
+        language: 'Language',
+        importNotes: 'Import Notes',
+        account: 'Account',
+        signedInAs: 'Signed in as',
+        signOutConfirmTitle: 'Sign Out',
+        signOutConfirmMessage: 'Are you sure you want to sign out?',
+        cancel: 'Cancel',
+        selectCollection: 'Select Collection',
+        success: 'Success',
+        importFailed: 'Import Failed',
+        invalidFileType: 'Invalid File Type',
+        importedCount: (count) => `Imported ${count} notes from Google Keep.`,
+        importedFrom: (name) => `Imported from ${name}`,
+        ok: 'OK',
+
+        // Home
+        save: 'Save',
+        recentThoughts: 'Recent Thoughts',
+        filterHeading: (filter) => `${filter}s`,
+        edit: 'Edit',
+        delete: 'Delete',
+        notesCount: (n) => `${n} notes`,
+    },
+    zh: {
+        // Auth
+        welcomeBack: '欢迎回来',
+        createAccount: '创建您的账户',
+        email: '邮箱',
+        password: '密码',
+        signIn: '登录',
+        signUp: '注册',
+        signOut: '退出登录',
+        noAccountYet: '还没有账户？',
+        alreadyHaveAccount: '已有账户？',
+        enterEmailPassword: '请输入邮箱和密码。',
+        passwordTooShort: '密码至少需要 8 个字符。',
+
+        // Navigation
+        home: '首页',
+        collection: '收藏',
+        settings: '设置',
+
+        // Capture
+        capturePlaceholder: '在这里写下、说出或放入任何内容…',
+        emptyStateTitle: '您的想法将显示在这里',
+        emptyStateSubtitle: '在上方输入，记录您的第一个想法',
+        emptyFilterTitle: (filter) => `暂无「${filter}」`,
+        emptyFilterSubtitle: '给一些笔记分类后即可在此查看',
+
+        // Settings
+        navigation: '导航',
+        activeCollection: '默认收藏夹',
+        setDefaultLanding: '设置默认起始页',
+        preferences: '偏好设置',
+        darkMode: '深色模式',
+        language: '语言',
+        importNotes: '导入笔记',
+        account: '账户',
+        signedInAs: '当前账户',
+        signOutConfirmTitle: '退出登录',
+        signOutConfirmMessage: '确定要退出登录吗？',
+        cancel: '取消',
+        selectCollection: '选择收藏夹',
+        success: '成功',
+        importFailed: '导入失败',
+        invalidFileType: '文件类型无效',
+        importedCount: (count) => `已从 Google Keep 导入 ${count} 条笔记。`,
+        importedFrom: (name) => `已导入 ${name}`,
+        ok: '好的',
+
+        // Home
+        save: '保存',
+        recentThoughts: '最近的想法',
+        filterHeading: (filter) => `${filter}`,
+        edit: '编辑',
+        delete: '删除',
+        notesCount: (n) => `${n} 条笔记`,
+    },
+};

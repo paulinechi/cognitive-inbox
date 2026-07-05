@@ -3,9 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../context/ThemeContext';
+import { useLocale } from '../context/LocaleContext';
 
 export const FilterDropdown = ({ selectedFilter, onSelectFilter, collections = [] }) => {
     const { colors: themeColors, isDark } = useTheme();
+    const { t, tc } = useLocale();
     const [isOpen, setIsOpen] = useState(false);
 
     // Build filter types from collections
@@ -19,7 +21,7 @@ export const FilterDropdown = ({ selectedFilter, onSelectFilter, collections = [
     return (
         <View style={styles.container}>
             <Text style={[styles.headerText, { color: themeColors.text }]}>
-                {selectedFilter === "All" ? "Recent Thoughts" : `${selectedFilter}s`}
+                {selectedFilter === "All" ? t('recentThoughts') : t('filterHeading', selectedFilter)}
             </Text>
 
             <View style={styles.filterButtonContainer}>
@@ -47,7 +49,7 @@ export const FilterDropdown = ({ selectedFilter, onSelectFilter, collections = [
                         { color: themeColors.textSecondary },
                         selectedFilter !== 'All' && { color: isDark ? '#000000' : '#FFFFFF' }
                     ]}>
-                        {selectedFilter}
+                        {tc(selectedFilter)}
                     </Text>
                 </TouchableOpacity>
 
@@ -80,7 +82,7 @@ export const FilterDropdown = ({ selectedFilter, onSelectFilter, collections = [
                                                 fontWeight: '600'
                                             }
                                         ]}>
-                                            {item}
+                                            {tc(item)}
                                         </Text>
                                         {selectedFilter === item && (
                                             <Ionicons name="checkmark" size={14} color={themeColors.text} />

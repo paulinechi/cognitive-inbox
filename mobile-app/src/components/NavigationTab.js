@@ -2,14 +2,17 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useLocale } from '../context/LocaleContext';
 
 export const NavigationTab = ({ activeTab, onTabPress }) => {
     const { colors: themeColors, isDark } = useTheme();
+    const { t } = useLocale();
 
+    // `name` stays stable (used as the tab id); `label` is what's displayed
     const tabs = [
-        { name: 'Home', icon: 'home-outline', activeIcon: 'home' },
-        { name: 'Collection', icon: 'layers-outline', activeIcon: 'layers' },
-        { name: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
+        { name: 'Home', label: t('home'), icon: 'home-outline', activeIcon: 'home' },
+        { name: 'Collection', label: t('collection'), icon: 'layers-outline', activeIcon: 'layers' },
+        { name: 'Settings', label: t('settings'), icon: 'settings-outline', activeIcon: 'settings' },
     ];
 
     const activeColor = isDark ? '#FFFFFF' : '#374151'; // White or Dark Grey
@@ -35,7 +38,7 @@ export const NavigationTab = ({ activeTab, onTabPress }) => {
                             styles.tabLabel,
                             { color: isActive ? activeColor : inactiveColor }
                         ]}>
-                            {tab.name}
+                            {tab.label}
                         </Text>
                     </TouchableOpacity>
                 );

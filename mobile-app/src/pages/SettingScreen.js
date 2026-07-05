@@ -20,11 +20,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CustomAlert from '../components/CustomAlert';
 
 import { useLogs } from '../context/LogContext';
+import { useAuth } from '../context/AuthContext';
+import { useLocale } from '../context/LocaleContext';
 import { captureThought, importKeepNotes } from '../services/api';
 
 export default function SettingScreen({ selectedFilter, onSelectFilter }) {
     const { colors: themeColors, toggleTheme, isDark } = useTheme();
     const { addLog, collections, fetchLogs } = useLogs();
+    const { user, logout } = useAuth();
+    const { t, tc, language, changeLanguage } = useLocale();
     const [loading, setLoading] = useState(false);
     const [showTagPicker, setShowTagPicker] = useState(false);
     const [importModalVisible, setImportModalVisible] = useState(false);
@@ -157,33 +161,33 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
     return (
         <ScrollView style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top + 32 }]}>
             <View style={styles.headerRow}>
-                <Text style={[styles.headerTitle, { color: themeColors.text }]}>Settings</Text>
+                <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('settings')}</Text>
                 {loading && <ActivityIndicator size="small" color={themeColors.text} />}
             </View>
 
             {/* Navigation Section */}
-            <Text style={[styles.sectionTitle, { color: themeColors.placeholder }]}>Navigation</Text>
+            <Text style={[styles.sectionTitle, { color: themeColors.placeholder }]}>{t('navigation')}</Text>
             <View style={[styles.section, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                 <TouchableOpacity
                     style={styles.row}
                     onPress={() => setShowTagPicker(true)}
                 >
                     <View>
-                        <Text style={[styles.rowLabel, { color: themeColors.text }]}>Active Collection</Text>
-                        <Text style={{ fontSize: 12, color: themeColors.placeholder }}>Set default landing page</Text>
+                        <Text style={[styles.rowLabel, { color: themeColors.text }]}>{t('activeCollection')}</Text>
+                        <Text style={{ fontSize: 12, color: themeColors.placeholder }}>{t('setDefaultLanding')}</Text>
                     </View>
                     <View style={styles.rightContent}>
-                        <Text style={[styles.activeValue, { color: '#3B82F6' }]}>{selectedFilter}</Text>
+                        <Text style={[styles.activeValue, { color: '#3B82F6' }]}>{tc(selectedFilter)}</Text>
                         <Ionicons name="chevron-forward" size={16} color={themeColors.placeholder} style={{ marginLeft: 8 }} />
                     </View>
                 </TouchableOpacity>
             </View>
 
             {/* Preferences Section */}
-            <Text style={[styles.sectionTitle, { color: themeColors.placeholder }]}>Preferences</Text>
+            <Text style={[styles.sectionTitle, { color: themeColors.placeholder }]}>{t('preferences')}</Text>
             <View style={[styles.section, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                 <View style={styles.row}>
-                    <Text style={[styles.rowLabel, { color: themeColors.text }]}>Dark Mode</Text>
+                    <Text style={[styles.rowLabel, { color: themeColors.text }]}>{t('darkMode')}</Text>
                     <Switch
                         trackColor={{ false: "#E5E7EB", true: "#3B82F6" }}
                         thumbColor={"#FFFFFF"}
@@ -192,9 +196,48 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                     />
                 </View>
                 <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
+                <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => changeLanguage(language === 'en' ? 'zh' : 'en')}
+                >
+                    <Text style={[styles.rowLabel, { color: themeColors.text }]}>{t('language')}</Text>
+                    <View style={styles.rightContent}>
+                        <Text style={{ fontSize: 14, color: themeColors.textSecondary }}>
+                            {language === 'en' ? 'English' : '中文'}
+                        </Text>
+                        <Ionicons name="swap-horizontal-outline" size={16} color={themeColors.placeholder} style={{ marginLeft: 8 }} />
+                    </View>
+                </TouchableOpacity>
+                <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
                 <TouchableOpacity style={styles.row} onPress={() => setImportModalVisible(true)}>
-                    <Text style={[styles.rowLabel, { color: themeColors.text }]}>Import Notes</Text>
+                    <Text style={[styles.rowLabel, { color: themeColors.text }]}>{t('importNotes')}</Text>
                     <Ionicons name="download-outline" size={20} color={themeColors.placeholder} />
+                </TouchableOpacity>
+            </View>
+
+            {/* Account Section */}
+            <Text style={[styles.sectionTitle, { color: themeColors.placeholder }]}>{t('account')}</Text>
+            <View style={[styles.section, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                <View style={styles.row}>
+                    <Text style={[styles.rowLabel, { color: themeColors.text }]}>{t('signedInAs')}</Text>
+                    <Text style={{ fontSize: 14, color: themeColors.textSecondary, maxWidth: '60%' }} numberOfLines={1}>
+                        {user?.email || 'Unknown'}
+                    </Text>
+                </View>
+                <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
+                <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => showAlert(
+                        t('signOutConfirmTitle'),
+                        t('signOutConfirmMessage'),
+                        [
+                            { text: t('cancel'), onPress: () => setAlertConfig(prev => ({ ...prev, visible: false })) },
+                            { text: t('signOut'), style: 'destructive', onPress: () => { setAlertConfig(prev => ({ ...prev, visible: false })); logout(); } },
+                        ]
+                    )}
+                >
+                    <Text style={[styles.rowLabel, { color: '#EF4444' }]}>{t('signOut')}</Text>
+                    <Ionicons name="log-out-outline" size={20} color="#EF4444" />
                 </TouchableOpacity>
             </View>
 
@@ -212,7 +255,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                     onPress={() => setShowTagPicker(false)}
                 >
                     <View style={[styles.modalContent, { backgroundColor: themeColors.card, maxHeight: '80%' }]}>
-                        <Text style={[styles.modalTitle, { color: themeColors.text }]}>Select Collection</Text>
+                        <Text style={[styles.modalTitle, { color: themeColors.text }]}>{t('selectCollection')}</Text>
                         <FlatList
                             data={tags}
                             keyExtractor={(item) => item}
@@ -230,7 +273,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                                         styles.tagText,
                                         { color: selectedFilter === item ? '#3B82F6' : themeColors.text }
                                     ]}>
-                                        {item}
+                                        {tc(item)}
                                     </Text>
                                     {selectedFilter === item && (
                                         <Ionicons name="checkmark" size={20} color="#3B82F6" />
@@ -256,7 +299,7 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                     onPress={() => setImportModalVisible(false)}
                 >
                     <View style={[styles.modalContent, { backgroundColor: themeColors.card }]}>
-                        <Text style={[styles.modalTitle, { color: themeColors.text }]}>Import Notes</Text>
+                        <Text style={[styles.modalTitle, { color: themeColors.text }]}>{t('importNotes')}</Text>
 
                         <TouchableOpacity
                             style={[styles.importOption, { borderBottomColor: themeColors.border }]}

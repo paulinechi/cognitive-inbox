@@ -4,9 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 import { useTheme } from '../context/ThemeContext';
+import { useLocale } from '../context/LocaleContext';
 
 export const LogItem = ({ item, onDelete, onClick }) => {
     const { colors: themeColors, isDark } = useTheme();
+    const { t, tc } = useLocale();
     const swipeableRef = useRef(null);
 
     const renderRightActions = (progress, dragX) => {
@@ -33,7 +35,7 @@ export const LogItem = ({ item, onDelete, onClick }) => {
                     { transform: [{ translateX: trans }] }
                 ]}>
                     <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
-                    <Text style={styles.actionText}>Delete</Text>
+                    <Text style={styles.actionText}>{t('delete')}</Text>
                 </Animated.View>
             </View>
         );
@@ -63,7 +65,7 @@ export const LogItem = ({ item, onDelete, onClick }) => {
                     { transform: [{ translateX: trans }] }
                 ]}>
                     <Ionicons name="pencil" size={24} color="#FFFFFF" />
-                    <Text style={styles.actionText}>Edit</Text>
+                    <Text style={styles.actionText}>{t('edit')}</Text>
                 </Animated.View>
             </View>
         );
@@ -110,7 +112,7 @@ export const LogItem = ({ item, onDelete, onClick }) => {
                             {item.types && item.types.map((type, index) => (
                                 <View key={index} style={[styles.typeBadge, { backgroundColor: isDark ? '#374151' : '#F3F4F6' }]}>
                                     <Text style={[styles.typeText, { color: themeColors.textSecondary }]}>
-                                        {type}
+                                        {tc(type)}
                                     </Text>
                                 </View>
                             ))}

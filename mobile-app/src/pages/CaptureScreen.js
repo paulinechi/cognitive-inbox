@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { captureThought } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useLogs } from '../context/LogContext';
+import { useLocale } from '../context/LocaleContext';
 import { Toast } from '../components/Toast';
 import { LogItem } from '../components/LogItem';
 import { FilterDropdown } from '../components/FilterDropdown';
@@ -24,6 +25,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 export default function CaptureScreen() {
     const { colors: themeColors, isDark } = useTheme();
     const { logs, addLog, deleteLog, collections, updateLog } = useLogs();
+    const { t } = useLocale();
     const insets = useSafeAreaInsets();
 
     const [activeTab, setActiveTab] = useState('Home');
@@ -147,7 +149,7 @@ export default function CaptureScreen() {
                             flex: 1,
                             paddingBottom: 40,
                         }}
-                        placeholder="Write, speak, or drop anything here..."
+                        placeholder={t('capturePlaceholder')}
                         placeholderTextColor={themeColors.placeholder}
                         multiline={true}
                         textAlignVertical="top"
@@ -184,7 +186,7 @@ export default function CaptureScreen() {
                             <Text style={[
                                 styles.saveButtonText,
                                 (!text.trim() || loading) && { color: isDark ? themeColors.textSecondary : '#9CA3AF' }
-                            ]}>Save</Text>
+                            ]}>{t('save')}</Text>
                         </TouchableOpacity>
 
                         {loading && <ActivityIndicator size="small" color="#6366F1" style={{ marginLeft: 12 }} />}
@@ -205,10 +207,10 @@ export default function CaptureScreen() {
                     {filteredLogs.length === 0 ? (
                         <View style={styles.emptyState}>
                             <Text style={[styles.emptyStateTitle, { color: themeColors.textSecondary }]}>
-                                {selectedFilter === "All" ? "Your thoughts will appear here" : `No ${selectedFilter}s yet`}
+                                {selectedFilter === "All" ? t('emptyStateTitle') : t('emptyFilterTitle', selectedFilter)}
                             </Text>
                             <Text style={[styles.emptyStateSubtitle, { color: themeColors.placeholder }]}>
-                                {selectedFilter === "All" ? "Start typing above to capture your first thought" : "Try categorizing some notes to see them here"}
+                                {selectedFilter === "All" ? t('emptyStateSubtitle') : t('emptyFilterSubtitle')}
                             </Text>
                         </View>
                     ) : (
