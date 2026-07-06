@@ -2,6 +2,8 @@
 
 Cognitive Inbox is an intelligent application designed to capture, analyze, and organize your thoughts, ideas, and tasks using advanced AI models.
 
+> **Full technical design** — architecture, data model, API reference, deployment: [docs/TECHNICAL_DESIGN.md](docs/TECHNICAL_DESIGN.md)
+
 ## Tech Stack
 
 ### Backend
