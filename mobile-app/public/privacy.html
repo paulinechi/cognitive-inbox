@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — Cognitive Inbox</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+           color: #111827; background: #F9F9FB; margin: 0; line-height: 1.65; }
+    main { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    h2 { font-size: 20px; margin-top: 36px; }
+    .updated { color: #6B7280; font-size: 14px; margin-bottom: 32px; }
+    table { border-collapse: collapse; width: 100%; font-size: 15px; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+    th { color: #6B7280; font-weight: 600; }
+    .zh { border-top: 2px solid #E5E7EB; margin-top: 56px; padding-top: 24px; }
+    a { color: #2563EB; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Cognitive Inbox · Last updated: July 6, 2026</p>
+
+  <p>Cognitive Inbox ("the app") is a personal note-taking app that uses AI to organize what you capture.
+     This policy explains what data the app handles, where it goes, and your choices. The short version:
+     <strong>your notes are yours, we don't sell or share data, there are no ads or tracking, and the only
+     third party that processes your note content is Google (Gemini), which powers the AI features.</strong></p>
+
+  <h2>Data we collect</h2>
+  <table>
+    <tr><th>Data</th><th>Purpose</th><th>Where it's stored</th></tr>
+    <tr><td>Email address &amp; password</td><td>Your account. Passwords are stored only as bcrypt hashes — we cannot read them.</td><td>Our database (Neon Postgres, hosted on AWS infrastructure)</td></tr>
+    <tr><td>Notes you capture — text, voice recordings, photos</td><td>The core function of the app: storing and organizing your thoughts.</td><td>Our database; media files in Vercel Blob storage</td></tr>
+    <tr><td>AI-derived data — summaries, categories, tags, action items, emotional tone</td><td>Organizing your notes automatically.</td><td>Our database, linked to your account</td></tr>
+  </table>
+  <p>We do <strong>not</strong> collect analytics, advertising identifiers, location, contacts, or browsing data.
+     There are no third-party tracking SDKs in the app.</p>
+
+  <h2>How AI processing works</h2>
+  <p>When you capture a note, its content (text, audio, or image) is sent to <strong>Google's Gemini API</strong>
+     to generate the summary, category, tags, and — for voice notes — the transcription. This processing is
+     governed by <a href="https://ai.google.dev/gemini-api/terms">Google's API terms</a>. We send only the note
+     content itself, never your email or identity.</p>
+
+  <h2>Device permissions</h2>
+  <p>The app asks for <strong>microphone</strong> (voice notes), <strong>camera</strong> and
+     <strong>photo library</strong> (visual notes) access. Each is used only at the moment you capture,
+     and only for the note you're creating. You can decline; text capture works without them.</p>
+
+  <h2>Data sharing</h2>
+  <p>We do not sell, rent, or share your personal data with anyone. The only parties that touch your data are
+     our infrastructure providers, acting on our instructions: Vercel (hosting), Neon (database),
+     and Google (AI processing as described above).</p>
+
+  <h2>Data retention &amp; deletion</h2>
+  <p>Your notes stay until you delete them — deleting a memo in the app removes it from our database.
+     To delete your entire account and all associated data, email us (address below) from your registered
+     email address and we will complete the deletion within 30 days.</p>
+
+  <h2>Security</h2>
+  <p>All traffic is encrypted in transit (HTTPS). Authentication uses short-lived signed tokens stored in your
+     device's secure keychain. Passwords are hashed with bcrypt and never stored in plain text.</p>
+
+  <h2>Children</h2>
+  <p>Cognitive Inbox is not directed at children under 13 and we do not knowingly collect data from them.</p>
+
+  <h2>Changes</h2>
+  <p>We'll update this page when the policy changes and revise the date at the top. Material changes will be
+     noted in the app's release notes.</p>
+
+  <h2>Contact</h2>
+  <p>Questions or deletion requests: <a href="mailto:chifeixuan@gmail.com">chifeixuan@gmail.com</a></p>
+
+  <section class="zh" lang="zh">
+    <h1>隐私政策（简体中文）</h1>
+    <p class="updated">最后更新：2026 年 7 月 6 日</p>
+    <p>Cognitive Inbox 是一款使用 AI 整理笔记的个人应用。简而言之：<strong>您的笔记属于您自己；我们不出售或共享数据；应用内没有广告和追踪；唯一处理您笔记内容的第三方是 Google（Gemini），用于提供 AI 功能。</strong></p>
+    <p><strong>我们收集的数据：</strong>您的邮箱和密码（密码仅以 bcrypt 哈希存储）、您记录的笔记（文字、语音、照片）以及 AI 生成的摘要、分类、标签等。我们不收集分析数据、广告标识符、位置信息或通讯录。</p>
+    <p><strong>AI 处理：</strong>您记录笔记时，其内容会发送至 Google Gemini API 以生成摘要、分类、标签及语音转写。我们只发送笔记内容本身，不会发送您的邮箱或身份信息。</p>
+    <p><strong>数据删除：</strong>在应用内删除笔记即从数据库中移除。如需删除整个账户，请使用注册邮箱发送邮件至 <a href="mailto:chifeixuan@gmail.com">chifeixuan@gmail.com</a>，我们将在 30 天内完成删除。</p>
+  </section>
+</main>
+</body>
+</html>

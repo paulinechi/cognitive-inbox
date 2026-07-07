@@ -11,3 +11,4 @@ typing-extensions
 PyJWT
 bcrypt
 psycopg2-binary
+httpx

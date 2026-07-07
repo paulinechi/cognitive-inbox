@@ -13,6 +13,7 @@ import os
 logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/tmp/uploads")
+BLOB_API_URL = "https://blob.vercel-storage.com"
 
 
 def ensure_upload_dir() -> str:
@@ -20,15 +21,44 @@ def ensure_upload_dir() -> str:
     return UPLOAD_DIR
 
 
-def save_upload_file(file: UploadFile) -> str:
-    file_ext = file.filename.split('.')[-1] if '.' in file.filename else "bin"
-    safe_filename = f"{uuid.uuid4()}.{file_ext}"
-    file_path = os.path.join(ensure_upload_dir(), safe_filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    return f"/uploads/{safe_filename}"
+def save_media(file_bytes: bytes, filename_hint: str | None, mime_type: str | None) -> str | None:
+    """Persist an uploaded file and return its URI.
+
+    Uses Vercel Blob when BLOB_READ_WRITE_TOKEN is set (durable, absolute URL);
+    otherwise writes to the local uploads dir and returns a relative /uploads path.
+    Returns None if storage fails — the memo is still saved without media.
+    """
+    ext = filename_hint.rsplit('.', 1)[-1] if filename_hint and '.' in filename_hint else "bin"
+    safe_filename = f"{uuid.uuid4()}.{ext}"
+
+    token = os.getenv("BLOB_READ_WRITE_TOKEN")
+    if token:
+        try:
+            import httpx
+            response = httpx.put(
+                f"{BLOB_API_URL}/media/{safe_filename}",
+                content=file_bytes,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "x-api-version": "7",
+                    "x-content-type": mime_type or "application/octet-stream",
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
+            return response.json()["url"]
+        except Exception as e:
+            logger.warning(f"FILE - Blob upload failed, media not persisted: {e}")
+            return None
+
+    try:
+        file_path = os.path.join(ensure_upload_dir(), safe_filename)
+        with open(file_path, "wb") as buffer:
+            buffer.write(file_bytes)
+        return f"/uploads/{safe_filename}"
+    except OSError as e:
+        logger.warning(f"FILE - Could not save upload to disk: {e}")
+        return None
 
 ALLOWED_UPLOAD_MIME_PREFIXES = ("audio/", "image/")
 
@@ -79,18 +109,12 @@ class MemoService:
         # Save file if present
         media_uri = None
         media_type_db = None
-        
+
         if file:
-            # We need to reset file cursor because we read it above
-            await file.seek(0)
-            try:
-                media_uri = save_upload_file(file)
-                media_type_db = mime_type
-                logger.info(f"FILE - Saved to disk: {media_uri}")
-            except OSError as e:
-                logger.warning(f"FILE - Could not save upload to disk: {e}")
-                media_uri = None
-                media_type_db = mime_type
+            media_uri = save_media(file_bytes, file.filename, mime_type)
+            media_type_db = mime_type
+            if media_uri:
+                logger.info(f"FILE - Saved: {media_uri}")
 
         logger.info("AI - Sending content to Gemini for analysis...")
         processed_data = analyze_content(

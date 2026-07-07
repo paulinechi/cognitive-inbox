@@ -23,11 +23,15 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#111827"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.paulinechi.cognitiveinbox",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -50,6 +54,11 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8ae661d7-9225-4e12-bffa-298c003964f8"
+      }
+    }
   }
 }

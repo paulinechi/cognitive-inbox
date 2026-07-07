@@ -81,3 +81,5 @@ Thumbs.db
 
 # Brain artifacts (optional - uncomment if you don't want to commit these)
 # .gemini/
+.vercel
+.env*

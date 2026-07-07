@@ -195,22 +195,15 @@ class KeepImporter:
                                             
                                             # Check if file exists in zip
                                             if full_zip_path in z.namelist():
-                                                # Define target path
-                                                ext = os.path.splitext(rel_path)[1]
-                                                new_filename = f"{uuid.uuid4()}{ext}"
-                                                target_path = os.path.join(ensure_upload_dir(), new_filename)
-                                                
-                                                # Extract and save
-                                                try:
-                                                    with z.open(full_zip_path) as source, open(target_path, "wb") as target:
-                                                        shutil.copyfileobj(source, target)
-
-                                                    # Set URI (relative path for static serving)
-                                                    media_uri = f"/uploads/{new_filename}"
+                                                from .memo_service import save_media
+                                                with z.open(full_zip_path) as source:
+                                                    attachment_bytes = source.read()
+                                                media_uri = save_media(
+                                                    attachment_bytes, rel_path, att.get('mimetype')
+                                                )
+                                                if media_uri:
                                                     media_type = att.get('mimetype')
                                                     break # Only take the first image for now
-                                                except OSError as e:
-                                                    logger.warning(f"Could not persist attachment {full_zip_path}: {e}")
 
                             # Combine title and text for query
                             full_text = f"{title}\n{text_content}".strip()
