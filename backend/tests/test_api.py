@@ -149,6 +149,47 @@ class TestMemos:
         assert response.status_code == 200, response.text
 
 
+class TestAccountDeletion:
+    def test_delete_account_removes_everything(self, client, mock_gemini):
+        token = register_user(client, "goodbye@example.com")["access_token"]
+        client.post(
+            "/memos/capture",
+            data={"text": "note to be erased", "available_tags": "[]"},
+            headers=auth_header(token),
+        )
+
+        response = client.delete("/auth/me", headers=auth_header(token))
+        assert response.status_code == 200
+
+        # Token no longer works (user gone)
+        assert client.get("/memos/", headers=auth_header(token)).status_code == 401
+        # Login is gone too
+        assert (
+            client.post(
+                "/auth/login",
+                json={"email": "goodbye@example.com", "password": "password123"},
+            ).status_code
+            == 401
+        )
+        # Email can be re-registered fresh with empty data
+        new_token = register_user(client, "goodbye@example.com")["access_token"]
+        assert client.get("/memos/", headers=auth_header(new_token)).json() == []
+
+    def test_delete_account_leaves_other_users_intact(self, client, mock_gemini):
+        token_stay = register_user(client, "stayer@example.com")["access_token"]
+        token_go = register_user(client, "leaver@example.com")["access_token"]
+        client.post(
+            "/memos/capture",
+            data={"text": "keep me", "available_tags": "[]"},
+            headers=auth_header(token_stay),
+        )
+
+        client.delete("/auth/me", headers=auth_header(token_go))
+
+        remaining = client.get("/memos/", headers=auth_header(token_stay)).json()
+        assert len(remaining) == 1
+
+
 class TestCollections:
     def test_default_collections_seeded_on_register(self, client):
         token = register_user(client, "collector@example.com")["access_token"]

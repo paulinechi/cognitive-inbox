@@ -53,6 +53,11 @@ export const translations = {
         edit: 'Edit',
         delete: 'Delete',
         notesCount: (n) => `${n} notes`,
+        deleteAccount: 'Delete Account',
+        deleteAccountConfirmTitle: 'Delete Account?',
+        deleteAccountConfirmMessage: 'This permanently deletes your account, all notes, and media. This cannot be undone.',
+        deleteAccountFailed: 'Could not delete the account. Please try again.',
+        deleteBtn: 'Delete',
     },
     zh: {
         // Auth
@@ -108,5 +113,10 @@ export const translations = {
         edit: '编辑',
         delete: '删除',
         notesCount: (n) => `${n} 条笔记`,
+        deleteAccount: '删除账户',
+        deleteAccountConfirmTitle: '确定删除账户？',
+        deleteAccountConfirmMessage: '这将永久删除您的账户、所有笔记和媒体文件，且无法恢复。',
+        deleteAccountFailed: '删除账户失败，请重试。',
+        deleteBtn: '删除',
     },
 };

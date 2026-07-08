@@ -22,7 +22,7 @@ import CustomAlert from '../components/CustomAlert';
 import { useLogs } from '../context/LogContext';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
-import { captureThought, importKeepNotes } from '../services/api';
+import { captureThought, importKeepNotes, deleteAccount } from '../services/api';
 
 export default function SettingScreen({ selectedFilter, onSelectFilter }) {
     const { colors: themeColors, toggleTheme, isDark } = useTheme();
@@ -238,6 +238,37 @@ export default function SettingScreen({ selectedFilter, onSelectFilter }) {
                 >
                     <Text style={[styles.rowLabel, { color: '#EF4444' }]}>{t('signOut')}</Text>
                     <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                </TouchableOpacity>
+                <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
+                <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => showAlert(
+                        t('deleteAccountConfirmTitle'),
+                        t('deleteAccountConfirmMessage'),
+                        [
+                            { text: t('cancel'), onPress: () => setAlertConfig(prev => ({ ...prev, visible: false })) },
+                            {
+                                text: t('deleteBtn'),
+                                style: 'destructive',
+                                onPress: async () => {
+                                    setAlertConfig(prev => ({ ...prev, visible: false }));
+                                    setLoading(true);
+                                    try {
+                                        await deleteAccount();
+                                        await logout();
+                                    } catch (error) {
+                                        console.error('Account deletion failed:', error);
+                                        showAlert(t('deleteAccountFailed'), error.message || '');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                },
+                            },
+                        ]
+                    )}
+                >
+                    <Text style={[styles.rowLabel, { color: '#EF4444' }]}>{t('deleteAccount')}</Text>
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
                 </TouchableOpacity>
             </View>
 

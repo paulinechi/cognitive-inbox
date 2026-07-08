@@ -70,3 +70,29 @@ def login(credentials: UserCredentials, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 def me(current_user: UserModel = Depends(get_current_user)):
     return current_user
+
+
+@router.delete("/me")
+def delete_account(
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete the account and everything it owns."""
+    from ..models import MemoModel
+    from ..services.memo_service import delete_media_blobs
+
+    user_id = current_user.id
+    memos = db.query(MemoModel).filter(MemoModel.user_id == user_id).all()
+    memo_count = len(memos)
+    blob_urls = [m.media_uri for m in memos if m.media_uri and m.media_uri.startswith("https://")]
+
+    db.query(MemoModel).filter(MemoModel.user_id == user_id).delete(synchronize_session=False)
+    db.query(CollectionModel).filter(CollectionModel.user_id == user_id).delete(synchronize_session=False)
+    db.delete(current_user)
+    db.commit()
+
+    # Media cleanup is best-effort; the account rows are already gone
+    delete_media_blobs(blob_urls)
+
+    logger.info(f"AUTH - Deleted account {user_id} ({memo_count} memos)")
+    return {"message": "Account and all data deleted"}

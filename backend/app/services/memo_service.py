@@ -60,6 +60,28 @@ def save_media(file_bytes: bytes, filename_hint: str | None, mime_type: str | No
         logger.warning(f"FILE - Could not save upload to disk: {e}")
         return None
 
+
+def delete_media_blobs(urls: list[str]) -> None:
+    """Best-effort deletion of Vercel Blob files (e.g. on account deletion)."""
+    token = os.getenv("BLOB_READ_WRITE_TOKEN")
+    if not token or not urls:
+        return
+    try:
+        import httpx
+        response = httpx.post(
+            f"{BLOB_API_URL}/delete",
+            json={"urls": urls},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "x-api-version": "7",
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+        logger.info(f"FILE - Deleted {len(urls)} media blob(s)")
+    except Exception as e:
+        logger.warning(f"FILE - Blob cleanup failed (non-fatal): {e}")
+
 ALLOWED_UPLOAD_MIME_PREFIXES = ("audio/", "image/")
 
 

@@ -88,6 +88,20 @@ export const fetchMemos = async () => {
 };
 
 /**
+ * Permanently deletes the current account and all its data.
+ *
+ * @returns {Promise<void>}
+ * @throws {Error} If the request fails
+ */
+export const deleteAccount = async () => {
+    const response = await authFetch(`${API_URL}/auth/me`, { method: 'DELETE' });
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+    }
+};
+
+/**
  * Imports Google Keep notes from a Takeout ZIP file.
  * 
  * @param {string} fileUri - URI of the ZIP file
